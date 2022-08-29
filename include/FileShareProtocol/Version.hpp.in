@@ -1,0 +1,14 @@
+/*
+** Project LibFileShareProtocol, 2022
+**
+** Author Francois Michaut
+**
+** Started on  Sat May 28 13:35:42 2022 Francois Michaut
+** Last update Sun Aug 28 19:28:05 2022 Francois Michaut
+**
+** Version.hpp : Library version
+*/
+
+#define LIB_FILE_SHARE_PROTOCOL_VERSION_MAJOR @LibFileShareProtocol_VERSION_MAJOR@
+#define LIB_FILE_SHARE_PROTOCOL_VERSION_MINOR @LibFileShareProtocol_VERSION_MINOR@
+#define LIB_FILE_SHARE_PROTOCOL_VERSION_PATCH @LibFileShareProtocol_VERSION_PATCH@
