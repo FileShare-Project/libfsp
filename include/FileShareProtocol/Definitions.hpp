@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Sun Aug 28 19:17:33 2022 Francois Michaut
+** Last update Mon Aug 29 18:56:09 2022 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
@@ -24,6 +24,7 @@ namespace FileShareProtocol {
 
     enum class StatusCode {
         STATUS_OK       = 0x00,
+        FORBIDDEN       = 0x43,
         UNKNOWN_COMMAND = 0x44,
         INTERNAL_ERROR  = 0x50,
     };
