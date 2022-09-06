@@ -4,10 +4,12 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Mon Aug 29 18:56:09 2022 Francois Michaut
+** Last update Tue Sep  6 13:59:11 2022 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
+
+#include <memory>
 
 namespace FileShareProtocol {
     enum class CommandCode {
@@ -29,9 +31,9 @@ namespace FileShareProtocol {
         INTERNAL_ERROR  = 0x50,
     };
 
-    class Response {
-        private:
-            StatusCode code;
-
+    template<class T>
+    struct Response {
+        StatusCode code;
+        std::shared_ptr<T> response;
     };
 }
