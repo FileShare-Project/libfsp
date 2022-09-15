@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Thu May 26 23:23:59 2022 Francois Michaut
-## Last update Mon Aug 29 20:51:44 2022 Francois Michaut
+## Last update Thu Sep 15 14:10:59 2022 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the FileShareProtocol library
 ##
@@ -13,6 +13,8 @@ cmake_minimum_required (VERSION 3.15)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 # TODO: This currently breaks Apple/Windows builds: find another solution
 set_property(GLOBAL PROPERTY ALLOW_DUPLICATE_CUSTOM_TARGETS 1)
@@ -35,6 +37,7 @@ include_directories(
 add_library(fsp
   source/Protocol.cpp
   source/Client.cpp
+  source/ClientConfig.cpp
   )
 
 target_link_libraries(fsp cppsockets)

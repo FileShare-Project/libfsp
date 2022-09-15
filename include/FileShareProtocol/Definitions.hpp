@@ -4,12 +4,16 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Tue Sep  6 13:59:11 2022 Francois Michaut
+** Last update Wed Sep 14 22:27:04 2022 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
 
+#pragma once
+
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace FileShareProtocol {
     enum class CommandCode {
@@ -26,8 +30,10 @@ namespace FileShareProtocol {
 
     enum class StatusCode {
         STATUS_OK       = 0x00,
+        INVALID_PATH    = 0x42,
         FORBIDDEN       = 0x43,
-        UNKNOWN_COMMAND = 0x44,
+        FILE_NOT_FOUND  = 0x44,
+        UNKNOWN_COMMAND = 0x45,
         INTERNAL_ERROR  = 0x50,
     };
 
@@ -35,5 +41,16 @@ namespace FileShareProtocol {
     struct Response {
         StatusCode code;
         std::shared_ptr<T> response;
+    };
+
+    struct FileInfo {
+        std::string path;
+        bool is_directory;
+    };
+
+    struct FileList {
+        std::vector<FileInfo> files;
+        std::size_t page_nb;
+        std::size_t total_pages;
     };
 }
