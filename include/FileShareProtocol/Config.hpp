@@ -4,9 +4,9 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:23:57 2022 Francois Michaut
-** Last update Mon Oct 24 21:18:55 2022 Francois Michaut
+** Last update Tue Feb  7 07:57:08 2023 Francois Michaut
 **
-** ClientConfig.hpp : Configuration of the Client
+** Config.hpp : Configuration of the file sharing
 */
 
 #pragma once
@@ -16,9 +16,9 @@
 #include <vector>
 
 namespace FileShareProtocol {
-    class ClientConfig {
+    class Config {
         public:
-            enum TransportProtocol {
+            enum TransportMode {
                 UDP,
                 TCP,
                 AUTOMATIC            // AUTOMATIC switches between TCP/UDP based
@@ -28,21 +28,24 @@ namespace FileShareProtocol {
             static const std::filesystem::perms secure_folder_perms;
 
             // paths starting with '~/' will have this part replaced by the current user's home directory
-            ClientConfig(
+            Config(
                 const std::filesystem::path &downloads_folder = "",
                 std::string root_name = "//fsp",
                 const std::vector<std::filesystem::path> &public_paths = {},
                 const std::vector<std::filesystem::path> &private_paths = {"~/.ssh", "~/.fsp"},
                 const std::filesystem::path &private_keys_dir = "~/.fsp/private",
                 std::string private_key_name = "file_share",
-                TransportProtocol transport_protocol = AUTOMATIC
+                TransportMode transport_mode = AUTOMATIC, bool disable_server = false
             );
-            ~ClientConfig() = default;
+            ~Config() = default;
 
-            ClientConfig(const ClientConfig &other) = default;
-            ClientConfig(ClientConfig &&other) noexcept  = default;
-            ClientConfig &operator=(const ClientConfig &other)  = default;
-            ClientConfig &operator=(ClientConfig &&other) noexcept  = default;
+            Config(const Config &other) = default;
+            Config(Config &&other) noexcept  = default;
+            Config &operator=(const Config &other)  = default;
+            Config &operator=(Config &&other) noexcept  = default;
+
+            static Config from_file(std::filesystem::path config_file);
+            void to_file(std::filesystem::path config_file);
 
             [[nodiscard]]
             const std::filesystem::path &get_downloads_folder() const;
@@ -80,6 +83,11 @@ namespace FileShareProtocol {
             std::filesystem::path private_keys_dir;
             // Name of the key/certificate file to use
             std::string private_key_name;
-            TransportProtocol transport_protocol;
+            TransportMode transport_mode;
+            // If set to true, the server will not open a socket nor listen to
+            // incomming connections. You will still be able to connect to other
+            // clients but they will not be able to initiate the connection.
+            // Set this to true if you want an extra layer of security.
+            bool disable_server;
     };
 }

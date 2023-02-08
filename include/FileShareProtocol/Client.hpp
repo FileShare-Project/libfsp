@@ -4,14 +4,14 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:23:07 2022 Francois Michaut
-** Last update Mon Oct 24 19:57:31 2022 Francois Michaut
+** Last update Tue Feb  7 22:40:26 2023 Francois Michaut
 **
 ** Client.hpp : Client to communicate with peers with the FileShareProtocol
 */
 
 #pragma once
 
-#include "FileShareProtocol/ClientConfig.hpp"
+#include "FileShareProtocol/Config.hpp"
 #include "FileShareProtocol/Definitions.hpp"
 
 #include <CppSockets/IPv4.hpp>
@@ -26,12 +26,12 @@ namespace FileShareProtocol {
         public:
             using ProgressCallback = std::function<void(const std::string &filepath, float percentage, std::size_t current_size, std::size_t total_size)>;
 
-            explicit Client(const CppSockets::IEndpoint &peer, ClientConfig config = Client::default_config(), bool create_key_if_missing = true);
-            explicit Client(CppSockets::TlsSocket &&peer, ClientConfig config = Client::default_config(), bool create_key_if_missing = true);
+            explicit Client(const CppSockets::IEndpoint &peer, Config config = Client::default_config());
+            explicit Client(CppSockets::TlsSocket &&peer, Config config = Client::default_config());
 
             [[nodiscard]]
-            const ClientConfig &get_config() const;
-            void set_config(const ClientConfig &config);
+            const Config &get_config() const;
+            void set_config(const Config &config);
 
             [[nodiscard]]
             const CppSockets::TlsSocket &get_socket() const;
@@ -46,12 +46,9 @@ namespace FileShareProtocol {
             Response<void> initiate_pairing();
             Response<void> accept_pairing();
         protected:
-            static ClientConfig default_config();
+            static Config default_config();
         private:
-            void initialize_private_key();
-            void initialize_download_directory();
-
             CppSockets::TlsSocket socket;
-            ClientConfig config;
+            Config config;
     };
 }
