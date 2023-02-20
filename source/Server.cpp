@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Tue Feb  7 23:45:26 2023 Francois Michaut
+** Last update Sun Feb 19 20:40:22 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -18,11 +18,24 @@
 #include "FileShareProtocol/Server.hpp"
 
 namespace FileShareProtocol {
-    Server::Server(Config config) :
-        m_socket(CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0)), m_config(std::move(config))
+    Server::Server(Config config) : Server(Server::default_endpoint(), config)
+    {}
+
+    Server::Server(std::shared_ptr<CppSockets::IEndpoint> server_endpoint, Config config) :
+        m_server_endpoint(server_endpoint),
+        m_socket(CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0)),
+        m_config(std::move(config))
     {
+        restart();
+    }
+
+    void Server::restart() {
         initialize_private_key();
         initialize_download_directory();
+        m_socket = CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0);
+        if (!this->disabled()) {
+            m_socket.bind(*m_server_endpoint);
+        }
     }
 
     Client &Server::connect(CppSockets::TlsSocket &&peer) {
@@ -41,21 +54,20 @@ namespace FileShareProtocol {
         return m_client_list.emplace_back(peer, config);
     }
 
-    const Config &Server::get_config() const {
-        return m_config;
-    }
-
-    void Server::set_config(const Config &config) {
-        m_config = config;
-    }
-
-    const CppSockets::TlsSocket &Server::get_socket() const {
-        return m_socket;
-    }
+    const Config &Server::get_config() const { return m_config; }
+    void Server::set_config(const Config &config) { m_config = config; }
+    const CppSockets::TlsSocket &Server::get_socket() const { return m_socket; }
+    bool Server::disabled() const { return m_config.is_server_disabled(); }
 
     Config Server::default_config()
     {
         return {}; // TODO: explicitely set default params
+    }
+
+    std::shared_ptr<CppSockets::IEndpoint> Server::default_endpoint()
+    {
+        // TODO: choose a better port than 1234
+        return std::make_shared<CppSockets::EndpointV4>(CppSockets::IPv4("127.0.0.1"), 1234);
     }
 
     void Server::initialize_download_directory() {

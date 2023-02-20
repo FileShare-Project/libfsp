@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:29:35 2022 Francois Michaut
-** Last update Tue Feb  7 07:58:47 2023 Francois Michaut
+** Last update Sun Feb 19 10:57:30 2023 Francois Michaut
 **
 ** FileShareConfig.cpp : FileShareConfig implementation
 */
@@ -23,16 +23,16 @@ namespace FileShareProtocol {
         const std::filesystem::path &private_keys_dir, std::string pkey_name,
         TransportMode transport_mode, bool disable_server
     ) :
-        root_name(std::move(root_name)),
-        public_paths(Utils::resolve_home_components(public_paths)),
-        private_paths(Utils::resolve_home_components(private_paths)),
-        transport_mode(transport_mode),
-        private_keys_dir(Utils::resolve_home_component(private_keys_dir)),
-        private_key_name(std::move(pkey_name)),
-        downloads_folder(Utils::resolve_home_component(downloads_folder)),
-        disable_server(disable_server)
+        m_root_name(std::move(root_name)),
+        m_public_paths(Utils::resolve_home_components(public_paths)),
+        m_private_paths(Utils::resolve_home_components(private_paths)),
+        m_transport_mode(transport_mode),
+        m_private_keys_dir(Utils::resolve_home_component(private_keys_dir)),
+        m_private_key_name(std::move(pkey_name)),
+        m_downloads_folder(Utils::resolve_home_component(downloads_folder)),
+        m_disable_server(disable_server)
     {
-        std::filesystem::directory_entry pkey_dir{this->private_keys_dir};
+        std::filesystem::directory_entry pkey_dir{m_private_keys_dir};
 
         if (pkey_dir.exists()) {
             if (!pkey_dir.is_directory())
@@ -44,21 +44,41 @@ namespace FileShareProtocol {
                 throw std::runtime_error("The private key/certificate path has insecure permissions");
 #endif
         }
-        if (downloads_folder.empty()) {
-            this->downloads_folder = Utils::resolve_home_component("~/Downloads"); // TODO: replace by cross-plateform way of getting the dowloads folder
+        if (m_downloads_folder.empty()) {
+            m_downloads_folder = Utils::resolve_home_component("~/Downloads"); // TODO: replace by cross-plateform way of getting the dowloads folder
         }
     }
 
-    const std::filesystem::path &Config::get_private_keys_dir() const {
-        return private_keys_dir;
-    }
+    // static Config Config::from_file(std::filesystem::path config_file);
+    // void Config::to_file(std::filesystem::path config_file);
 
-    const std::string &Config::get_private_key_name() const {
-        return private_key_name;
-    }
+    // void Config::add_public_path(std::filesystem::path path);
+    // void Config::add_public_paths(std::vector<std::filesystem::path> paths);
+    // void Config::remove_public_path(std::filesystem::path path);
+    // void Config::remove_public_paths(std::vector<std::filesystem::path> paths);
 
-    const std::filesystem::path &Config::get_downloads_folder() const {
-        return downloads_folder;
-    }
+    // void Config::add_private_path(std::filesystem::path path);
+    // void Config::add_private_paths(std::vector<std::filesystem::path> paths);
+    // void Config::remove_private_path(std::filesystem::path path);
+    // void Config::remove_private_paths(std::vector<std::filesystem::path> paths);
 
+    // const std::vector<std::filesystem::path> &Config::get_public_paths() const;
+    // const std::vector<std::filesystem::path> &Config::get_private_paths() const;
+    const std::filesystem::path &Config::get_downloads_folder() const { return m_downloads_folder; }
+    // void Config::set_public_paths(std::vector<std::filesystem::path> paths);
+    // void Config::set_private_paths(std::vector<std::filesystem::path> paths);
+    // void Config::set_downloads_folder(const std::filesystem::path path);
+
+    const std::filesystem::path &Config::get_private_keys_dir() const { return m_private_keys_dir; }
+    const std::string &Config::get_private_key_name() const { return m_private_key_name; }
+    // void Config::set_private_keys_dir(std::filesystem::path path);
+    // void Config::set_private_key_name(std::string name);
+
+    // const std::string &Config::get_root_name() const;
+    // Config::TransportMode Config::get_transport_mode() const;
+    // void Config::set_root_name(std::string root_name);
+    // void Config::set_transport_mode(TransportMode mode);
+
+    bool Config::is_server_disabled() const { return m_disable_server; }
+    // void Config::set_server_disabled(bool disabled);
 }

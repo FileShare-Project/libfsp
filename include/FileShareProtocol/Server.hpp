@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 19:01:51 2022 Francois Michaut
-** Last update Tue Feb  7 22:39:22 2023 Francois Michaut
+** Last update Sun Feb 19 20:36:02 2023 Francois Michaut
 **
 ** Server.hpp : Server part used to receive qnd process requests of Clients
 */
@@ -20,7 +20,8 @@
 namespace FileShareProtocol {
     class Server {
         public:
-            Server(Config config = Server::default_config());
+            Server(std::shared_ptr<CppSockets::IEndpoint> server_endpoint = Server::default_endpoint(), Config config = Server::default_config());
+            Server(Config config);
 
             Client &connect(CppSockets::TlsSocket &&peer);
             Client &connect(const CppSockets::IEndpoint &peer);
@@ -33,12 +34,16 @@ namespace FileShareProtocol {
 
             const CppSockets::TlsSocket &get_socket() const;
 
+            void restart();
+            bool disabled() const;
         private:
             void initialize_download_directory();
             void initialize_private_key();
+            static std::shared_ptr<CppSockets::IEndpoint> default_endpoint();
 
+            std::shared_ptr<CppSockets::IEndpoint> m_server_endpoint;
+            CppSockets::TlsSocket m_socket;
             Config m_config;
             std::vector<Client> m_client_list;
-            CppSockets::TlsSocket m_socket;
     };
 }
