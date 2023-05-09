@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Mon Feb 14 19:35:41 2022 Francois Michaut
-## Last update Tue May  9 09:10:16 2023 Francois Michaut
+## Last update Wed May 10 09:47:22 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake building and running tests for FileShare
 ##
@@ -20,12 +20,28 @@ include(CTest)
 
 create_test_sourcelist(TestFiles test_driver.cpp
   Protocol/TestVersion.cpp
-  )
+  Utils/TestFileHash.cpp
+  Utils/TestVarInt.cpp
+)
 
 add_executable(unit_tests
   ../source/Protocol/Version.cpp
+  ../source/Utils/DebugPerf.cpp
+  ../source/Utils/FileDescriptor.cpp
+  ../source/Utils/FileHash.cpp
+  ../source/Utils/VarInt.cpp
   ${TestFiles}
-  )
+)
+
+target_link_libraries(unit_tests ssl crypto)
+
+file(GLOB LIB_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/../lib/*/include")
+include_directories(
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+  "${LIB_INCLUDES}"
+)
 
 foreach (test ${TestFiles})
   if (NOT ${test} STREQUAL test_driver.cpp)
@@ -44,9 +60,3 @@ foreach (LIB_DIRECTORY IN LISTS LIB_DIRECTORIES)
   cmake_path(GET LIB_DIRECTORY FILENAME LIB_NAME)
   add_test (NAME ${LIB_NAME}_tests COMMAND ${CMAKE_MAKE_PROGRAM} -C "${LIB_DIRECTORY}" test)
 endforeach()
-
-include_directories(
-  "${CMAKE_CURRENT_BINARY_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../include"
-)

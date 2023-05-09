@@ -4,24 +4,26 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Oct 13 19:09:01 2022 Francois Michaut
-** Last update Tue May  9 09:48:02 2023 Francois Michaut
+** Last update Tue May  9 23:39:25 2023 Francois Michaut
 **
 ** Path.cpp : Implementation of utilities to manpulate paths in a cross plateform way
 */
 
 #include "FileShare/Utils/Path.hpp"
 
-#ifdef _WIN32
+#include <CppSockets/OSDetection.hpp>
+
+#ifdef OS_WINDOWS
 #else
-#include <pwd.h>
-#include <sys/types.h>
-#include <unistd.h>
+  #include <pwd.h>
+  #include <sys/types.h>
+  #include <unistd.h>
 #endif
 
 namespace FileShare::Utils {
     std::filesystem::path home_directoy(const std::string &user) {
         std::string res;
-#ifdef _WIN32
+#ifdef OS_WINDOWS
         // https://github.com/python/cpython/blob/main/Lib/ntpath.py
 #else
         char *home = std::getenv("HOME");

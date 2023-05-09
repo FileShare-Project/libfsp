@@ -4,10 +4,12 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri May  5 19:42:09 2023 Francois Michaut
-** Last update Tue May  9 08:50:53 2023 Francois Michaut
+** Last update Sun May 14 14:02:52 2023 Francois Michaut
 **
 ** Version.hpp : A class to represent a Protocol Version
 */
+
+#pragma once
 
 #include <array>
 #include <compare>

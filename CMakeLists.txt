@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Thu May 26 23:23:59 2022 Francois Michaut
-## Last update Tue May  9 09:09:12 2023 Francois Michaut
+## Last update Wed May 10 08:23:07 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the FileShareProtocol library
 ##
@@ -15,6 +15,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+
+set(CMAKE_CXX_FLAGS_DEBUG_INIT "-O3 -DDEBUG -g3")
+set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O3")
 
 # TODO: This currently breaks Apple/Windows builds: find another solution
 set_property(GLOBAL PROPERTY ALLOW_DUPLICATE_CUSTOM_TARGETS 1)
@@ -32,15 +35,20 @@ include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
   "${LIB_INCLUDES}"
   "${LIB_OUTPUTS}"
-  )
+)
 
 add_library(fsp
+  source/Protocol/Protocol.cpp
+  source/Protocol/Version.cpp
+
+  source/Utils/DebugPerf.cpp
+  source/Utils/FileDescriptor.cpp
+  source/Utils/FileHash.cpp
   source/Utils/Path.cpp
+  source/Utils/VarInt.cpp
 
   source/Client.cpp
   source/Config.cpp
-  source/Protocol/Protocol.cpp
-  source/Protocol/Version.cpp
   source/Server.cpp
 )
 
@@ -59,4 +67,4 @@ add_custom_target(test
   --build "${CMAKE_CURRENT_BINARY_DIR}/tests" -- --quiet
   COMMAND ${CMAKE_MAKE_PROGRAM}
   -C "${CMAKE_CURRENT_BINARY_DIR}/tests" test ARGS=--output-on-failure
-  )
+)

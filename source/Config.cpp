@@ -4,13 +4,15 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:29:35 2022 Francois Michaut
-** Last update Tue May  9 09:48:42 2023 Francois Michaut
+** Last update Tue May  9 23:38:57 2023 Francois Michaut
 **
 ** FileShareConfig.cpp : FileShareConfig implementation
 */
 
 #include "FileShare/Config.hpp"
 #include "FileShare/Utils/Path.hpp"
+
+#include <CppSockets/OSDetection.hpp>
 
 namespace FileShare {
     const std::filesystem::perms Config::secure_file_perms = std::filesystem::perms::owner_read | std::filesystem::perms::owner_write;
@@ -37,7 +39,7 @@ namespace FileShare {
         if (pkey_dir.exists()) {
             if (!pkey_dir.is_directory())
                 throw std::runtime_error("The private key/certificate path is not a directory");
-#ifdef _WIN32
+#ifdef OS_WINDOWS
         // TODO: figure out security recomandations for windows
 #else
             if (pkey_dir.status().permissions() != secure_folder_perms)
