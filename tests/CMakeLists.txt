@@ -4,25 +4,28 @@
 ## Author Francois Michaut
 ##
 ## Started on  Mon Feb 14 19:35:41 2022 Francois Michaut
-## Last update Mon Aug 29 20:23:03 2022 Francois Michaut
+## Last update Tue May  9 09:10:16 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake building and running tests for FileShare
 ##
 
 cmake_minimum_required (VERSION 3.15)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(LibFileShareProtocol-Tests VERSION 0.1.0 LANGUAGES C CXX)
 
 include(CTest)
 
-# create_test_sourcelist(TestFiles test_driver.cpp
-#   )
+create_test_sourcelist(TestFiles test_driver.cpp
+  Protocol/TestVersion.cpp
+  )
 
-# add_executable(unit_tests
-#   ${TestFiles}
-#   )
+add_executable(unit_tests
+  ../source/Protocol/Version.cpp
+  ${TestFiles}
+  )
 
 foreach (test ${TestFiles})
   if (NOT ${test} STREQUAL test_driver.cpp)

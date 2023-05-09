@@ -4,12 +4,12 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Oct 13 19:09:01 2022 Francois Michaut
-** Last update Mon Oct 24 19:21:11 2022 Francois Michaut
+** Last update Tue May  9 09:48:02 2023 Francois Michaut
 **
 ** Path.cpp : Implementation of utilities to manpulate paths in a cross plateform way
 */
 
-#include "Utils/Path.hpp"
+#include "FileShare/Utils/Path.hpp"
 
 #ifdef _WIN32
 #else
@@ -18,7 +18,7 @@
 #include <unistd.h>
 #endif
 
-namespace Utils {
+namespace FileShare::Utils {
     std::filesystem::path home_directoy(const std::string &user) {
         std::string res;
 #ifdef _WIN32

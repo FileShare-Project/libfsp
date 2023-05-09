@@ -4,15 +4,15 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:23:07 2022 Francois Michaut
-** Last update Tue Feb  7 22:40:26 2023 Francois Michaut
+** Last update Tue May  9 08:53:30 2023 Francois Michaut
 **
 ** Client.hpp : Client to communicate with peers with the FileShareProtocol
 */
 
 #pragma once
 
-#include "FileShareProtocol/Config.hpp"
-#include "FileShareProtocol/Definitions.hpp"
+#include "FileShare/Config.hpp"
+#include "FileShare/Protocol/Definitions.hpp"
 
 #include <CppSockets/IPv4.hpp>
 #include <CppSockets/TlsSocket.hpp>
@@ -21,7 +21,8 @@
 #include <functional>
 
 // TODO handle UDP
-namespace FileShareProtocol {
+// TODO: rename Client -> Peer
+namespace FileShare {
     class Client {
         public:
             using ProgressCallback = std::function<void(const std::string &filepath, float percentage, std::size_t current_size, std::size_t total_size)>;
@@ -38,13 +39,16 @@ namespace FileShareProtocol {
             void reconnect(const CppSockets::IEndpoint &peer);
             void reconnect(CppSockets::TlsSocket &&peer);
 
-            Response<void> send_file(std::string filepath, ProgressCallback progress_callback = {});
-            Response<void> receive_file(std::string filepath, ProgressCallback progress_callback = {});
-            Response<FileList> list_files(std::size_t page_idx = 0, std::string folderpath = "");
+            // Blocking functions
+            Protocol::Response<void> send_file(std::string filepath, ProgressCallback progress_callback = {});
+            Protocol::Response<void> receive_file(std::string filepath, ProgressCallback progress_callback = {});
+            Protocol::Response<Protocol::FileList> list_files(std::string folderpath = "", std::size_t page_idx = 0);
 
             // TODO determine params
-            Response<void> initiate_pairing();
-            Response<void> accept_pairing();
+            Protocol::Response<void> initiate_pairing();
+            Protocol::Response<void> accept_pairing();
+
+            // TODO: Async non-blocking Functions
         protected:
             static Config default_config();
         private:

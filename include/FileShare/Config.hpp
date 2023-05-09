@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:23:57 2022 Francois Michaut
-** Last update Sun Feb 19 10:56:44 2023 Francois Michaut
+** Last update Tue May  9 08:52:19 2023 Francois Michaut
 **
 ** Config.hpp : Configuration of the file sharing
 */
@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace FileShareProtocol {
+namespace FileShare {
     class Config {
         public:
             enum TransportMode {

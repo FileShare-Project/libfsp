@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 20:50:53 2022 Francois Michaut
-** Last update Tue Feb  7 22:41:08 2023 Francois Michaut
+** Last update Tue May  9 08:56:24 2023 Francois Michaut
 **
 ** Client.cpp : Implementation of the FileShareProtocol Client
 */
@@ -20,11 +20,12 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "FileShareProtocol/Client.hpp"
-#include "FileShareProtocol/Server.hpp"
+#include "FileShare/Client.hpp"
+#include "FileShare/Protocol/Protocol.hpp"
+#include "FileShare/Server.hpp"
 
 // TODO: Use custom classes for exceptions
-namespace FileShareProtocol {
+namespace FileShare {
     Client::Client(const CppSockets::IEndpoint &peer, Config config) :
         socket(CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0)), config(std::move(config))
     {

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Sun Feb 19 20:40:22 2023 Francois Michaut
+** Last update Tue May  9 08:56:50 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -15,9 +15,9 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "FileShareProtocol/Server.hpp"
+#include "FileShare/Server.hpp"
 
-namespace FileShareProtocol {
+namespace FileShare {
     Server::Server(Config config) : Server(Server::default_endpoint(), config)
     {}
 

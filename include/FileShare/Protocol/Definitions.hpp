@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Wed Sep 14 22:27:04 2022 Francois Michaut
+** Last update Tue May  9 08:49:26 2023 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
@@ -15,7 +15,10 @@
 #include <string>
 #include <vector>
 
-namespace FileShareProtocol {
+// TODO: find a better header name / organisation
+
+namespace FileShare::Protocol {
+    // TODO: add ping command
     enum class CommandCode {
         REQ_SEND_FILE       = 0x10,
         REQ_RECIVE_FILE     = 0x11,

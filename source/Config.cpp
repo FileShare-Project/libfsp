@@ -4,15 +4,15 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:29:35 2022 Francois Michaut
-** Last update Sun Feb 19 10:57:30 2023 Francois Michaut
+** Last update Tue May  9 09:48:42 2023 Francois Michaut
 **
 ** FileShareConfig.cpp : FileShareConfig implementation
 */
 
-#include "FileShareProtocol/Config.hpp"
-#include "Utils/Path.hpp"
+#include "FileShare/Config.hpp"
+#include "FileShare/Utils/Path.hpp"
 
-namespace FileShareProtocol {
+namespace FileShare {
     const std::filesystem::perms Config::secure_file_perms = std::filesystem::perms::owner_read | std::filesystem::perms::owner_write;
     const std::filesystem::perms Config::secure_folder_perms = std::filesystem::perms::owner_all;
 
@@ -24,12 +24,12 @@ namespace FileShareProtocol {
         TransportMode transport_mode, bool disable_server
     ) :
         m_root_name(std::move(root_name)),
-        m_public_paths(Utils::resolve_home_components(public_paths)),
-        m_private_paths(Utils::resolve_home_components(private_paths)),
+        m_public_paths(FileShare::Utils::resolve_home_components(public_paths)),
+        m_private_paths(FileShare::Utils::resolve_home_components(private_paths)),
         m_transport_mode(transport_mode),
-        m_private_keys_dir(Utils::resolve_home_component(private_keys_dir)),
+        m_private_keys_dir(FileShare::Utils::resolve_home_component(private_keys_dir)),
         m_private_key_name(std::move(pkey_name)),
-        m_downloads_folder(Utils::resolve_home_component(downloads_folder)),
+        m_downloads_folder(FileShare::Utils::resolve_home_component(downloads_folder)),
         m_disable_server(disable_server)
     {
         std::filesystem::directory_entry pkey_dir{m_private_keys_dir};
@@ -45,7 +45,7 @@ namespace FileShareProtocol {
 #endif
         }
         if (m_downloads_folder.empty()) {
-            m_downloads_folder = Utils::resolve_home_component("~/Downloads"); // TODO: replace by cross-plateform way of getting the dowloads folder
+            m_downloads_folder = FileShare::Utils::resolve_home_component("~/Downloads"); // TODO: replace by cross-plateform way of getting the dowloads folder
         }
     }
 
