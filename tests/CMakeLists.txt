@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Mon Feb 14 19:35:41 2022 Francois Michaut
-## Last update Wed May 10 09:47:22 2023 Francois Michaut
+## Last update Wed May 17 08:50:45 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake building and running tests for FileShare
 ##
@@ -21,18 +21,23 @@ include(CTest)
 create_test_sourcelist(TestFiles test_driver.cpp
   Protocol/TestVersion.cpp
   Utils/TestFileHash.cpp
+  Utils/TestSerialize.cpp
   Utils/TestVarInt.cpp
 )
 
 add_executable(unit_tests
   ../source/Protocol/Version.cpp
+
   ../source/Utils/DebugPerf.cpp
   ../source/Utils/FileDescriptor.cpp
   ../source/Utils/FileHash.cpp
+  ../source/Utils/Serialize.cpp
   ../source/Utils/VarInt.cpp
+
   ${TestFiles}
 )
 
+target_compile_definitions(unit_tests PRIVATE DEBUG)
 target_link_libraries(unit_tests ssl crypto)
 
 file(GLOB LIB_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/../lib/*/include")
