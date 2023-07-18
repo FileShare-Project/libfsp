@@ -1,10 +1,10 @@
 /*
-** Project FileShareProtocol, 2023
+** Project LibFileShareProtocol, 2023
 **
 ** Author Francois Michaut
 **
 ** Started on  Tue May  9 11:03:44 2023 Francois Michaut
-** Last update Sun May 14 14:02:59 2023 Francois Michaut
+** Last update Tue Jul 18 22:03:23 2023 Francois Michaut
 **
 ** FileDescriptor.hpp : Helper wrapper class to auto close file descriptor
 */

@@ -1,10 +1,10 @@
 /*
-** Project FileShareProtocol, 2022
+** Project LibFileShareProtocol, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Tue May  9 08:56:50 2023 Francois Michaut
+** Last update Tue Jul 18 22:02:58 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -18,7 +18,7 @@
 #include "FileShare/Server.hpp"
 
 namespace FileShare {
-    Server::Server(Config config) : Server(Server::default_endpoint(), config)
+    Server::Server(Config config) : Server(Server::default_endpoint(), std::move(config))
     {}
 
     Server::Server(std::shared_ptr<CppSockets::IEndpoint> server_endpoint, Config config) :
@@ -32,26 +32,28 @@ namespace FileShare {
     void Server::restart() {
         initialize_private_key();
         initialize_download_directory();
-        m_socket = CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0);
+        this->m_socket = CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0);
         if (!this->disabled()) {
-            m_socket.bind(*m_server_endpoint);
+            this->m_socket.bind(*this->m_server_endpoint);
         }
     }
 
-    Client &Server::connect(CppSockets::TlsSocket &&peer) {
-        return connect(std::move(peer), m_config);
+    Client &Server::connect(CppSockets::TlsSocket peer) {
+        return connect(std::move(peer), this->m_config);
     }
 
     Client &Server::connect(const CppSockets::IEndpoint &peer) {
-        return connect(peer, m_config);
+        return connect(peer, this->m_config);
     }
 
-    Client &Server::connect(CppSockets::TlsSocket &&peer, const Config &config) {
-        return m_client_list.emplace_back(std::move(peer), config);
+    Client &Server::connect(CppSockets::TlsSocket peer, const Config &config) {
+        // TODO: handle auth + version negotiation
+        return this->m_client_list.emplace_back(std::move(peer), "TODO", "TODO", Protocol::Protocol(Protocol::Version::v0_0_0), config);
     }
 
     Client &Server::connect(const CppSockets::IEndpoint &peer, const Config &config) {
-        return m_client_list.emplace_back(peer, config);
+        // TODO: handle auth + version negotiation
+        return this->m_client_list.emplace_back(peer, "TODO", "TODO", Protocol::Protocol(Protocol::Version::v0_0_0), config);
     }
 
     const Config &Server::get_config() const { return m_config; }
@@ -71,7 +73,7 @@ namespace FileShare {
     }
 
     void Server::initialize_download_directory() {
-        std::filesystem::directory_entry downloads{m_config.get_downloads_folder()};
+        std::filesystem::directory_entry downloads{this->m_config.get_downloads_folder()};
 
         if (!downloads.exists()) {
             std::filesystem::create_directory(downloads.path());

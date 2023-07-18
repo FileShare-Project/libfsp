@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:29:35 2022 Francois Michaut
-** Last update Tue May  9 23:38:57 2023 Francois Michaut
+** Last update Wed May 31 21:03:41 2023 Francois Michaut
 **
 ** FileShareConfig.cpp : FileShareConfig implementation
 */
@@ -52,35 +52,35 @@ namespace FileShare {
     }
 
     // static Config Config::from_file(std::filesystem::path config_file);
-    // void Config::to_file(std::filesystem::path config_file);
+    // Config &Config::to_file(std::filesystem::path config_file);
 
-    // void Config::add_public_path(std::filesystem::path path);
-    // void Config::add_public_paths(std::vector<std::filesystem::path> paths);
-    // void Config::remove_public_path(std::filesystem::path path);
-    // void Config::remove_public_paths(std::vector<std::filesystem::path> paths);
+    // Config &Config::add_public_path(std::filesystem::path path);
+    // Config &Config::add_public_paths(std::vector<std::filesystem::path> paths);
+    // Config &Config::remove_public_path(std::filesystem::path path);
+    // Config &Config::remove_public_paths(std::vector<std::filesystem::path> paths);
 
-    // void Config::add_private_path(std::filesystem::path path);
-    // void Config::add_private_paths(std::vector<std::filesystem::path> paths);
-    // void Config::remove_private_path(std::filesystem::path path);
-    // void Config::remove_private_paths(std::vector<std::filesystem::path> paths);
+    // Config &Config::add_private_path(std::filesystem::path path);
+    // Config &Config::add_private_paths(std::vector<std::filesystem::path> paths);
+    // Config &Config::remove_private_path(std::filesystem::path path);
+    // Config &Config::remove_private_paths(std::vector<std::filesystem::path> paths);
 
     // const std::vector<std::filesystem::path> &Config::get_public_paths() const;
     // const std::vector<std::filesystem::path> &Config::get_private_paths() const;
     const std::filesystem::path &Config::get_downloads_folder() const { return m_downloads_folder; }
-    // void Config::set_public_paths(std::vector<std::filesystem::path> paths);
-    // void Config::set_private_paths(std::vector<std::filesystem::path> paths);
-    // void Config::set_downloads_folder(const std::filesystem::path path);
+    // Config &Config::set_public_paths(std::vector<std::filesystem::path> paths);
+    // Config &Config::set_private_paths(std::vector<std::filesystem::path> paths);
+    // Config &Config::set_downloads_folder(const std::filesystem::path path);
 
     const std::filesystem::path &Config::get_private_keys_dir() const { return m_private_keys_dir; }
     const std::string &Config::get_private_key_name() const { return m_private_key_name; }
-    // void Config::set_private_keys_dir(std::filesystem::path path);
-    // void Config::set_private_key_name(std::string name);
+    // Config &Config::set_private_keys_dir(std::filesystem::path path);
+    // Config &Config::set_private_key_name(std::string name);
 
     // const std::string &Config::get_root_name() const;
     // Config::TransportMode Config::get_transport_mode() const;
-    // void Config::set_root_name(std::string root_name);
-    // void Config::set_transport_mode(TransportMode mode);
+    // Config &Config::set_root_name(std::string root_name);
+    // Config &Config::set_transport_mode(TransportMode mode);
 
     bool Config::is_server_disabled() const { return m_disable_server; }
-    // void Config::set_server_disabled(bool disabled);
+    // Config &Config::set_server_disabled(bool disabled);
 }

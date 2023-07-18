@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat May  6 12:40:55 2023 Francois Michaut
-** Last update Sun May 14 17:16:49 2023 Francois Michaut
+** Last update Sun Jul 16 13:48:35 2023 Francois Michaut
 **
 ** VarInt.hpp : Variable size integer implementation
 */
@@ -51,6 +51,12 @@ namespace FileShare::Utils {
             value >>= 7;
         }
         reset_string_view();
+    }
+
+    bool VarInt::parse(std::string_view input) {
+        std::string_view dummy;
+
+        return parse(input, dummy);
     }
 
     bool VarInt::parse(std::string_view input, std::string_view &output) {

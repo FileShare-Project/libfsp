@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat May  6 22:13:15 2023 Francois Michaut
-** Last update Sun May 14 20:19:13 2023 Francois Michaut
+** Last update Mon Jul 17 09:09:42 2023 Francois Michaut
 **
 ** FileHash.cpp : Function to hash file contents
 */
@@ -66,6 +66,8 @@ namespace FileShare::Utils {
         }
         if (EVP_DigestFinal(ctx.get(), digest_buff, &output_size) <= 0)
             throw std::runtime_error("Failed to compute the file hash");
+        if (output_size != algo_hash_size(algo))
+            throw std::runtime_error("Hash size is not what was expected");
         return std::string((char *)digest_buff, output_size);
     }
 

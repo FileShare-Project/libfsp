@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:23:57 2022 Francois Michaut
-** Last update Tue May  9 08:52:19 2023 Francois Michaut
+** Last update Wed May 31 21:20:23 2023 Francois Michaut
 **
 ** Config.hpp : Configuration of the file sharing
 */
@@ -48,15 +48,15 @@ namespace FileShare {
             void to_file(std::filesystem::path config_file);
 
             // Theses methods silently ignore missing/duplicates
-            void add_public_path(std::filesystem::path path);
-            void add_public_paths(std::vector<std::filesystem::path> paths);
-            void remove_public_path(std::filesystem::path path);
-            void remove_public_paths(std::vector<std::filesystem::path> paths);
+            Config &add_public_path(std::filesystem::path path);
+            Config &add_public_paths(std::vector<std::filesystem::path> paths);
+            Config &remove_public_path(std::filesystem::path path);
+            Config &remove_public_paths(std::vector<std::filesystem::path> paths);
 
-            void add_private_path(std::filesystem::path path);
-            void add_private_paths(std::vector<std::filesystem::path> paths);
-            void remove_private_path(std::filesystem::path path);
-            void remove_private_paths(std::vector<std::filesystem::path> paths);
+            Config &add_private_path(std::filesystem::path path);
+            Config &add_private_paths(std::vector<std::filesystem::path> paths);
+            Config &remove_private_path(std::filesystem::path path);
+            Config &remove_private_paths(std::vector<std::filesystem::path> paths);
 
             [[nodiscard]]
             const std::vector<std::filesystem::path> &get_public_paths() const;
@@ -64,27 +64,27 @@ namespace FileShare {
             const std::vector<std::filesystem::path> &get_private_paths() const;
             [[nodiscard]]
             const std::filesystem::path &get_downloads_folder() const;
-            void set_public_paths(std::vector<std::filesystem::path> paths);
-            void set_private_paths(std::vector<std::filesystem::path> paths);
-            void set_downloads_folder(const std::filesystem::path path);
+            Config &set_public_paths(std::vector<std::filesystem::path> paths);
+            Config &set_private_paths(std::vector<std::filesystem::path> paths);
+            Config &set_downloads_folder(const std::filesystem::path path);
 
             [[nodiscard]]
             const std::filesystem::path &get_private_keys_dir() const;
             [[nodiscard]]
             const std::string &get_private_key_name() const;
-            void set_private_keys_dir(std::filesystem::path path);
-            void set_private_key_name(std::string name);
+            Config &set_private_keys_dir(std::filesystem::path path);
+            Config &set_private_key_name(std::string name);
 
             [[nodiscard]]
             const std::string &get_root_name() const;
             [[nodiscard]]
             TransportMode get_transport_mode() const;
-            void set_root_name(std::string root_name);
-            void set_transport_mode(TransportMode mode);
+            Config &set_root_name(std::string root_name);
+            Config &set_transport_mode(TransportMode mode);
 
             [[nodiscard]]
             bool is_server_disabled() const;
-            void set_server_disabled(bool disabled);
+            Config &set_server_disabled(bool disabled);
         private:
             // Paths displayed to other clients are anonymised to protect user
             // privacy. root_name will be used as the virtual root prefix
@@ -99,7 +99,11 @@ namespace FileShare {
             std::vector<std::filesystem::path> m_public_paths;
             // List of directory/files that should NEVER be sent to other
             // clients. Sensitive directories like ~/.ssh should be listed.
-            // It restrict upload to protect against mistakes.
+            // It will override any path set in in m_public_paths and will also
+            // apply to files you send.
+            // Use this to allow certain directory but exclude sub-directories,
+            // and to prevent against sentitives files/folders mistakely
+            // added to m_public_paths or manually sent.
             std::vector<std::filesystem::path> m_private_paths;
             // Default location for downloads. Default to local Downloads folder
             // if empty string.
@@ -113,8 +117,11 @@ namespace FileShare {
 
             // If set to true, the server will not open a socket nor listen to
             // incomming connections. You will still be able to connect to other
-            // clients but they will not be able to initiate the connection.
-            // Set this to true if you want an extra layer of security.
+            // server but they will not be able to initiate the connection.
+            // Set this to true if you want an extra layer of security by
+            // preventing external connections.
+            // Note that when you initiate a connection to another server it will
+            // be able to send commands as well.
             bool m_disable_server;
     };
 }
