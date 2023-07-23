@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Thu May 26 23:23:59 2022 Francois Michaut
-## Last update Tue Jul 18 22:01:11 2023 Francois Michaut
+## Last update Wed Jul 19 08:59:07 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the FileShareProtocol library
 ##
@@ -18,6 +18,7 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 set(CMAKE_CXX_FLAGS_DEBUG_INIT "-O3 -DDEBUG -g3")
 set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O3")
+add_compile_definitions(_GNU_SOURCE)
 
 # TODO: This currently breaks Apple/Windows builds: find another solution
 set_property(GLOBAL PROPERTY ALLOW_DUPLICATE_CUSTOM_TARGETS 1)

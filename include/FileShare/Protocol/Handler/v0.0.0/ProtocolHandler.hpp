@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri May  5 21:32:03 2023 Francois Michaut
-** Last update Sun Jul 16 14:12:27 2023 Francois Michaut
+** Last update Sat Jul 22 20:27:10 2023 Francois Michaut
 **
 ** ProtocolHandler.hpp : ProtocolHandler for the v0.0.0 of the protocol
 */
@@ -24,10 +24,12 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
             std::string format_data_packet(std::uint8_t message_id, std::string filepath, std::size_t packet_idx, std::string_view data) override;
             std::string format_ping(std::uint8_t message_id) override;
 
-            std::size_t parse_request(std::string_view raw_msg, Request &out);
+            std::size_t parse_request(std::string_view raw_msg, Request &out) override;
         private:
             const static std::size_t packet_size = 4096; // TODO experiment with this
-            const static std::size_t header_size = 14;
+            const static std::size_t base_header_size = 6;
+
+            std::size_t header_size(std::size_t varint_size);
 
             std::shared_ptr<IRequestData> get_request_data(CommandCode cmd, std::uint8_t message_id, std::string_view payload);
 

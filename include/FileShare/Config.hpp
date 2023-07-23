@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:23:57 2022 Francois Michaut
-** Last update Wed May 31 21:20:23 2023 Francois Michaut
+** Last update Thu Jul 20 20:48:45 2023 Francois Michaut
 **
 ** Config.hpp : Configuration of the file sharing
 */
@@ -32,7 +32,7 @@ namespace FileShare {
                 const std::filesystem::path &downloads_folder = "",
                 std::string root_name = "//fsp",
                 const std::vector<std::filesystem::path> &public_paths = {},
-                const std::vector<std::filesystem::path> &private_paths = {"~/.ssh", "~/.fsp"},
+                const std::vector<std::filesystem::path> &private_paths = {"~/.ssh", "~/.fsp", "/etc/passwd", "/root"}, // TODO: find all paths that should be private
                 const std::filesystem::path &private_keys_dir = "~/.fsp/private",
                 std::string private_key_name = "file_share",
                 TransportMode transport_mode = AUTOMATIC, bool disable_server = false

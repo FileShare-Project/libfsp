@@ -4,10 +4,12 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Tue Jul 18 22:02:58 2023 Francois Michaut
+** Last update Sat Jul 22 23:20:24 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
+
+#include "FileShare/Server.hpp"
 
 #include <openssl/bn.h>
 #include <openssl/err.h>
@@ -15,7 +17,9 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "FileShare/Server.hpp"
+#ifdef OS_UNIX
+    #include <poll.h>
+#endif
 
 namespace FileShare {
     Server::Server(Config config) : Server(Server::default_endpoint(), std::move(config))
@@ -23,7 +27,6 @@ namespace FileShare {
 
     Server::Server(std::shared_ptr<CppSockets::IEndpoint> server_endpoint, Config config) :
         m_server_endpoint(server_endpoint),
-        m_socket(CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0)),
         m_config(std::move(config))
     {
         restart();
@@ -32,34 +35,70 @@ namespace FileShare {
     void Server::restart() {
         initialize_private_key();
         initialize_download_directory();
-        this->m_socket = CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0);
         if (!this->disabled()) {
+            // TODO: avoid this duplication
+            auto key_path = std::filesystem::path(m_config.get_private_keys_dir()) / (m_config.get_private_key_name() + "_key.pem");
+            auto cert_path = std::filesystem::path(m_config.get_private_keys_dir()) / (m_config.get_private_key_name() + "_cert.pem");
+
+            this->m_socket = CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0);
+            this->m_socket.set_reuseaddr(true);
+            this->m_socket.set_certificate(cert_path, key_path);
             this->m_socket.bind(*this->m_server_endpoint);
+            this->m_socket.listen(10); // TODO: configurable backlog
         }
     }
 
-    Client &Server::connect(CppSockets::TlsSocket peer) {
+    std::shared_ptr<Client> &Server::connect(CppSockets::TlsSocket peer) {
         return connect(std::move(peer), this->m_config);
     }
 
-    Client &Server::connect(const CppSockets::IEndpoint &peer) {
+    std::shared_ptr<Client> &Server::connect(const CppSockets::IEndpoint &peer) {
         return connect(peer, this->m_config);
     }
 
-    Client &Server::connect(CppSockets::TlsSocket peer, const Config &config) {
+    std::shared_ptr<Client> &Server::connect(CppSockets::TlsSocket peer, const Config &config) {
         // TODO: handle auth + version negotiation
-        return this->m_client_list.emplace_back(std::move(peer), "TODO", "TODO", Protocol::Protocol(Protocol::Version::v0_0_0), config);
+        std::shared_ptr<Client> client = std::make_shared<Client>(std::move(peer), "TODO", "TODO", Protocol::Protocol(Protocol::Version::v0_0_0), config);
+
+        return insert_client(std::move(client));
     }
 
-    Client &Server::connect(const CppSockets::IEndpoint &peer, const Config &config) {
+    std::shared_ptr<Client> &Server::connect(const CppSockets::IEndpoint &peer, const Config &config) {
         // TODO: handle auth + version negotiation
-        return this->m_client_list.emplace_back(peer, "TODO", "TODO", Protocol::Protocol(Protocol::Version::v0_0_0), config);
+        std::shared_ptr<Client> client = std::make_shared<Client>(peer, "TODO", "TODO", Protocol::Protocol(Protocol::Version::v0_0_0), config);
+
+        return insert_client(std::move(client));
     }
 
     const Config &Server::get_config() const { return m_config; }
     void Server::set_config(const Config &config) { m_config = config; }
     const CppSockets::TlsSocket &Server::get_socket() const { return m_socket; }
     bool Server::disabled() const { return m_config.is_server_disabled(); }
+
+    void Server::process_events(ClientAcceptCallback accept_cb, ClientRequestCallback request_cb) {
+        poll_events();
+
+        for (auto iter = m_events.begin(); iter != m_events.end(); iter++) {
+            auto request = iter->request();
+
+            if (request.has_value()) {
+                request_cb(*this, iter->client(), request.value());
+            } else {
+                accept_cb(*this, iter->client());
+            }
+        }
+        m_events.clear();
+    }
+
+    bool Server::pull_event(Event &result) {
+        if (m_events.empty())
+            poll_events();
+        if (m_events.empty())
+            return false;
+        result = std::move(m_events.back());
+        m_events.pop_back();
+        return true;
+    }
 
     Config Server::default_config()
     {
@@ -68,8 +107,69 @@ namespace FileShare {
 
     std::shared_ptr<CppSockets::IEndpoint> Server::default_endpoint()
     {
-        // TODO: choose a better port than 1234
-        return std::make_shared<CppSockets::EndpointV4>(CppSockets::IPv4("127.0.0.1"), 1234);
+        // TODO: choose a better port than 12345
+        return std::make_shared<CppSockets::EndpointV4>(CppSockets::IPv4("127.0.0.1"), 12345);
+    }
+
+    void Server::accept_client(std::shared_ptr<Client> peer) {
+        insert_client(std::move(peer));
+    }
+
+    std::shared_ptr<Client> &Server::insert_client(std::shared_ptr<Client> client) {
+        auto result = m_clients.emplace(client->get_socket().get_fd(), std::move(client));
+
+        return result.first->second; // TODO: check this does return a reference
+    }
+
+    void Server::poll_events() {
+#ifdef OS_UNIX
+        // TODO: avoid re-allocating the vector every time
+        std::vector<struct pollfd> fds;
+        nfds_t nfds = m_clients.size() + 1;
+        struct timespec timeout = {1, 0}; // TODO: configurable wait (currently 1s)
+        int nb_ready = 0;
+
+        fds.reserve(nfds);
+        fds.emplace_back(m_socket.get_fd(), POLLIN, 0);
+        for (auto iter = m_clients.begin(); iter != m_clients.end(); iter++) {
+            fds.emplace_back(iter->first, POLLIN, 0);
+        }
+        nb_ready = ppoll(fds.data(), nfds, &timeout, nullptr);
+        if (nb_ready < 0) // TODO: handle signals
+            throw std::runtime_error("Failed to poll");
+        for (auto iter = fds.begin(); nb_ready > 0 && iter != fds.end(); iter++) {
+            if (iter->revents & (POLLIN | POLLHUP)) {
+                nb_ready++;
+                if (iter->fd == m_socket.get_fd()) {
+                    auto tls_socket =  m_socket.accept();
+                    std::shared_ptr<Client> client = std::make_shared<Client>(std::move(*tls_socket), "TODO", "TODO", Protocol::Version::v0_0_0);
+                    std::optional<Protocol::Request> req = {};
+
+                    m_events.emplace_back(std::move(client), req);
+                } else {
+                    auto &client = m_clients.at(iter->fd);
+
+                    if (!handle_client_events(client)) {
+                        m_clients.erase(iter->fd);
+                    }
+                }
+            }
+        }
+#else
+        #error "Not implemented"
+#endif
+    }
+
+    bool Server::handle_client_events(std::shared_ptr<Client> &client) {
+        std::vector<Protocol::Request> requests = client->pull_requests();
+
+        for (auto iter = requests.begin(); iter != requests.end(); iter++) {
+            m_events.emplace_back(client, *iter);
+        }
+        if (!client->get_socket().connected()) {
+            return false;
+        }
+        return true;
     }
 
     void Server::initialize_download_directory() {
@@ -170,5 +270,17 @@ namespace FileShare {
             // TODO maybe add a param to force set ?
             throw std::runtime_error("Insecure permissions for the private key !");
         }
+    }
+
+    Server::Event::Event(std::shared_ptr<Client> client, std::optional<Protocol::Request> request) :
+        m_client(std::move(client)), m_request(std::move(request))
+    {}
+
+    std::shared_ptr<Client> &Server::Event::client() {
+        return m_client;
+    }
+
+    std::optional<Protocol::Request> &Server::Event::request() {
+        return m_request;
     }
 }

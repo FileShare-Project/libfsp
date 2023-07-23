@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 25 23:16:42 2022 Francois Michaut
-** Last update Tue May  9 09:13:10 2023 Francois Michaut
+** Last update Thu Jul 20 21:00:58 2023 Francois Michaut
 **
 ** Protocol.cpp : Implementation of the main Protocol class
 */
@@ -22,6 +22,10 @@ namespace FileShare::Protocol {
     {
         set_version(version);
     }
+
+    Protocol::Protocol(Version::VersionEnum version) :
+        Protocol::Protocol(Version(version))
+    {}
 
     void Protocol::set_version(Version version) {
         auto iter = protocol_list.find(version);

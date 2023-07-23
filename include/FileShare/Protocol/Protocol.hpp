@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 25 22:59:37 2022 Francois Michaut
-** Last update Mon May 15 11:53:06 2023 Francois Michaut
+** Last update Thu Jul 20 21:01:14 2023 Francois Michaut
 **
 ** Protocol.hpp : Main class to interract with the protocol
 */
@@ -32,11 +32,14 @@ namespace FileShare::Protocol {
             virtual std::string format_file_list(std::uint8_t message_id, std::vector<FileInfo> files, std::size_t page_idx, std::size_t total_pages) = 0;
             virtual std::string format_data_packet(std::uint8_t message_id, std::string filepath, std::size_t packet_idx, std::string_view data) = 0;
             virtual std::string format_ping(std::uint8_t message_id) = 0;
+
+            virtual std::size_t parse_request(std::string_view raw_msg, Request &out) = 0;
     };
 
     class Protocol {
         public:
             Protocol(Version version);
+            Protocol(Version::VersionEnum version);
 
             void set_version(Version version);
             Version version() const { return m_version; }
@@ -45,10 +48,6 @@ namespace FileShare::Protocol {
             auto operator<=>(const Protocol&) const = default;
 
             IProtocolHandler &handler() const { return *m_handler; }
-
-            Response<void> send_file(std::string filepath);
-            Response<void> receive_file(std::string filepath);
-            Response<FileList> list_files(std::string folderpath = "", std::size_t page_idx = 0);
 
             static std::map<Version, std::shared_ptr<IProtocolHandler>> protocol_list;
         private:

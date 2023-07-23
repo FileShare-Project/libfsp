@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:29:35 2022 Francois Michaut
-** Last update Wed May 31 21:03:41 2023 Francois Michaut
+** Last update Thu Jul 20 20:38:51 2023 Francois Michaut
 **
 ** FileShareConfig.cpp : FileShareConfig implementation
 */
@@ -82,5 +82,5 @@ namespace FileShare {
     // Config &Config::set_transport_mode(TransportMode mode);
 
     bool Config::is_server_disabled() const { return m_disable_server; }
-    // Config &Config::set_server_disabled(bool disabled);
+    Config &Config::set_server_disabled(bool disabled) { m_disable_server = disabled; return *this; }
 }

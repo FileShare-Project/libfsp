@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:23:07 2022 Francois Michaut
-** Last update Fri Jun  2 21:27:10 2023 Francois Michaut
+** Last update Thu Jul 20 21:02:06 2023 Francois Michaut
 **
 ** Client.hpp : Client to communicate with peers with the FileShareProtocol
 */
@@ -29,6 +29,8 @@ namespace FileShare {
 
             Client(const CppSockets::IEndpoint &peer, std::string device_uuid, std::string public_key, Protocol::Protocol protocol, Config config = Client::default_config());
             Client(CppSockets::TlsSocket &&peer, std::string device_uuid, std::string public_key, Protocol::Protocol protocol, Config config = Client::default_config());
+
+            std::vector<Protocol::Request> pull_requests();
 
             // Blocking functions
             Protocol::Response<void> send_file(std::string filepath, ProgressCallback progress_callback = {});
@@ -68,5 +70,8 @@ namespace FileShare {
             Protocol::Protocol m_protocol;
             std::string m_device_uuid;
             std::string m_public_key;
+
+            std::string m_buffer;
+            std::uint8_t m_message_id = 0;
     };
 }

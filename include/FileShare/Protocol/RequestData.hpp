@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Jul 16 11:25:51 2023 Francois Michaut
-** Last update Tue Jul 18 09:06:18 2023 Francois Michaut
+** Last update Sat Jul 22 20:44:28 2023 Francois Michaut
 **
 ** RequestData.hpp : RequestData interface. Subclasses will represent every request payload
 */
@@ -19,12 +19,15 @@ namespace FileShare::Protocol {
         public:
             IRequestData(std::uint8_t message_id);
 
+            virtual std::string to_str() const = 0;
             std::uint8_t message_id;
     };
 
     class SendFileData : public IRequestData {
         public:
             SendFileData(std::uint8_t message_id);
+
+            std::string to_str() const override;
 
             std::string filepath;
             Utils::HashAlgorithm hash_algorithm;
@@ -37,14 +40,18 @@ namespace FileShare::Protocol {
         public:
             ReceiveFileData(std::uint8_t message_id);
 
+            std::string to_str() const override;
+
             std::string filepath;
-            std::size_t packed_size;
+            std::size_t packet_size;
             std::size_t packet_start;
     };
 
     class ListFilesData : public IRequestData {
         public:
             ListFilesData(std::uint8_t message_id);
+
+            std::string to_str() const override;
 
             std::string folderpath;
             std::size_t page_nb;
@@ -55,6 +62,8 @@ namespace FileShare::Protocol {
         public:
             FileListData(std::uint8_t message_id);
 
+            std::string to_str() const override;
+
             std::size_t total_pages;
             std::size_t current_page;
             std::vector<FileInfo> files;
@@ -63,6 +72,8 @@ namespace FileShare::Protocol {
     class DataPacketData : public IRequestData {
         public:
             DataPacketData(std::uint8_t message_id);
+
+            std::string to_str() const override;
 
             std::string filepath;
             std::size_t packet_id;
@@ -73,5 +84,7 @@ namespace FileShare::Protocol {
     class PingData : public IRequestData {
         public:
             PingData(std::uint8_t message_id);
+
+            std::string to_str() const override;
     };
 }

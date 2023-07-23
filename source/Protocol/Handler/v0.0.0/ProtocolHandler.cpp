@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri May  5 21:35:06 2023 Francois Michaut
-** Last update Tue Jul 18 09:08:14 2023 Francois Michaut
+** Last update Sat Jul 22 22:06:53 2023 Francois Michaut
 **
 ** ProtocolHandler.cpp : ProtocolHandler for the v0.0.0 of the protocol
 */
@@ -19,16 +19,24 @@
 #include <chrono>
 
 namespace FileShare::Protocol::Handler::v0_0_0 {
+    std::size_t ProtocolHandler::header_size(std::size_t varint_size) {
+        return base_header_size + varint_size;
+    }
+
     std::size_t ProtocolHandler::parse_request(std::string_view raw_msg, Request &out) {
+        if (raw_msg.size() < base_header_size)
+            return 0;
         if (raw_msg.rfind(magic_bytes, 0) != 0)
             throw std::runtime_error("Missing magic bytes");
 
         CommandCode command_code = (CommandCode)raw_msg[4];
         std::uint8_t message_id = raw_msg[5];
+        std::size_t header_size;
         Utils::VarInt payload_size;
 
         if (!payload_size.parse(raw_msg.substr(6, 8)))
             throw std::runtime_error("MESSAGE_TOO_LONG");
+        header_size = this->header_size(payload_size.byte_size());
         if (raw_msg.size() < header_size + payload_size.to_number())
             return 0; // Payload is not complete, 0 bytes parsed
 
@@ -171,7 +179,7 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         payload = payload.substr(varint.to_number());
         if (!varint.parse(payload, payload))
             throw std::runtime_error("BAD_REQUEST");
-        data.packed_size = varint.to_number();
+        data.packet_size = varint.to_number();
         if (!varint.parse(payload, payload))
             throw std::runtime_error("BAD_REQUEST");
         data.packet_start = varint.to_number();

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 19:01:51 2022 Francois Michaut
-** Last update Tue Jul 18 13:47:11 2023 Francois Michaut
+** Last update Sat Jul 22 21:58:00 2023 Francois Michaut
 **
 ** Server.hpp : Server part used to receive qnd process requests of Clients
 */
@@ -21,18 +21,32 @@
 namespace FileShare {
     class Server {
         public:
-            using ClientAcceptCallback = std::function<bool(Server &, Client &client)>;
-            using ClientRequestCallback = std::function<void(Server &, Client &peer, Protocol::Request req)>;
-            using Event = std::tuple<Client, std::optional<Protocol::Request>>;
+            using ClientAcceptCallback = std::function<bool(Server &, std::shared_ptr<Client> &client)>;
+            using ClientRequestCallback = std::function<void(Server &, std::shared_ptr<Client> &peer, Protocol::Request &req)>;
+
+            // TODO: find a better way for this
+            class Event {
+                public:
+                    Event() = default;
+                    Event(std::shared_ptr<Client>, std::optional<Protocol::Request>);
+
+                    std::shared_ptr<Client> &client();
+                    std::optional<Protocol::Request> &request();
+                private:
+                    std::shared_ptr<Client> m_client;
+                    std::optional<Protocol::Request> m_request;
+            };
 
             Server(std::shared_ptr<CppSockets::IEndpoint> server_endpoint = Server::default_endpoint(), Config config = Server::default_config());
             Server(Config config);
 
             // TODO: Server will handle the ProtocolVersion negotiation + Peer verification
-            Client &connect(CppSockets::TlsSocket peer);
-            Client &connect(const CppSockets::IEndpoint &peer);
-            Client &connect(CppSockets::TlsSocket peer, const Config &config);
-            Client &connect(const CppSockets::IEndpoint &peer, const Config &config);
+            std::shared_ptr<Client> &connect(CppSockets::TlsSocket peer);
+            std::shared_ptr<Client> &connect(const CppSockets::IEndpoint &peer);
+            std::shared_ptr<Client> &connect(CppSockets::TlsSocket peer, const Config &config);
+            std::shared_ptr<Client> &connect(const CppSockets::IEndpoint &peer, const Config &config);
+
+            void accept_client(std::shared_ptr<Client> peer);
 
             // Warning : changing the server configuration does NOT change the
             // already connected Clients, only new ones. You need to manually update
@@ -50,8 +64,8 @@ namespace FileShare {
             void process_events(ClientAcceptCallback accept_cb, ClientRequestCallback request_cb);
             bool pull_event(Event &result);
 
-            std::vector<Client> &get_clients();
-            const std::vector<Client> &get_clients() const;
+            std::map<RawSocketType, std::shared_ptr<Client>> &get_clients();
+            const std::map<RawSocketType, std::shared_ptr<Client>> &get_clients() const;
 
             void restart();
             bool disabled() const;
@@ -59,13 +73,15 @@ namespace FileShare {
             void initialize_download_directory();
             void initialize_private_key();
             void poll_events();
+            bool handle_client_events(std::shared_ptr<Client> &client);
+            std::shared_ptr<Client> &insert_client(std::shared_ptr<Client> client);
 
             static std::shared_ptr<CppSockets::IEndpoint> default_endpoint();
 
             std::shared_ptr<CppSockets::IEndpoint> m_server_endpoint;
             CppSockets::TlsSocket m_socket;
             Config m_config;
-            std::vector<Client> m_client_list;
+            std::map<RawSocketType, std::shared_ptr<Client>> m_clients;
             std::vector<Event> m_events;
     };
 }
