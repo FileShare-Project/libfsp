@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Thu May 26 23:23:59 2022 Francois Michaut
-## Last update Wed Jul 19 08:59:07 2023 Francois Michaut
+## Last update Thu Aug 24 19:35:38 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the FileShareProtocol library
 ##
@@ -54,7 +54,9 @@ add_library(fsp
 
   source/Client.cpp
   source/Config.cpp
+  source/MessageQueue.cpp
   source/Server.cpp
+  source/TransferHandler.cpp
 )
 
 target_compile_definitions(fsp PRIVATE _LARGEFILE_SOURCE _FILE_OFFSET_BITS=64)

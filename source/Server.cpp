@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Sat Jul 22 23:20:24 2023 Francois Michaut
+** Last update Sat Aug 26 19:22:24 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -74,6 +74,7 @@ namespace FileShare {
     void Server::set_config(const Config &config) { m_config = config; }
     const CppSockets::TlsSocket &Server::get_socket() const { return m_socket; }
     bool Server::disabled() const { return m_config.is_server_disabled(); }
+    std::map<RawSocketType, std::shared_ptr<Client>> &Server::get_clients() { return m_clients; }
 
     void Server::process_events(ClientAcceptCallback accept_cb, ClientRequestCallback request_cb) {
         poll_events();
@@ -84,7 +85,9 @@ namespace FileShare {
             if (request.has_value()) {
                 request_cb(*this, iter->client(), request.value());
             } else {
-                accept_cb(*this, iter->client());
+                if (accept_cb(*this, iter->client())) {
+                    insert_client(iter->client());
+                }
             }
         }
         m_events.clear();

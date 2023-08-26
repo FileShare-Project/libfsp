@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri May  5 21:35:06 2023 Francois Michaut
-** Last update Sat Jul 22 22:06:53 2023 Francois Michaut
+** Last update Sat Aug 26 18:30:45 2023 Francois Michaut
 **
 ** ProtocolHandler.cpp : ProtocolHandler for the v0.0.0 of the protocol
 */
@@ -19,8 +19,49 @@
 #include <chrono>
 
 namespace FileShare::Protocol::Handler::v0_0_0 {
-    std::size_t ProtocolHandler::header_size(std::size_t varint_size) {
-        return base_header_size + varint_size;
+    std::string ProtocolHandler::format_request(const Request &request) {
+        switch (request.code) {
+            case CommandCode::RESPONSE: {
+                auto data = std::dynamic_pointer_cast<ResponseData>(request.request);
+
+                return format_response(request.message_id, *data);
+            }
+            case CommandCode::SEND_FILE: {
+                auto data = std::dynamic_pointer_cast<SendFileData>(request.request);
+
+                return format_send_file(request.message_id, *data);
+            }
+            case CommandCode::RECEIVE_FILE: {
+                auto data = std::dynamic_pointer_cast<ReceiveFileData>(request.request);
+
+                return format_receive_file(request.message_id, *data);
+            }
+            case CommandCode::LIST_FILES: {
+                auto data = std::dynamic_pointer_cast<ListFilesData>(request.request);
+
+                return format_list_files(request.message_id, *data);
+            }
+            case CommandCode::FILE_LIST: {
+                auto data = std::dynamic_pointer_cast<FileListData>(request.request);
+
+                return format_file_list(request.message_id, *data);
+            }
+            case CommandCode::PING: {
+                auto data = std::dynamic_pointer_cast<PingData>(request.request);
+
+                return format_ping(request.message_id, *data);
+            }
+            case CommandCode::DATA_PACKET: {
+                auto data = std::dynamic_pointer_cast<DataPacketData>(request.request);
+
+                return format_data_packet(request.message_id, *data);
+            }
+            case CommandCode::PAIR_REQUEST:
+            case CommandCode::ACCEPT_PAIR_REQUEST:
+                throw std::runtime_error("TODO: NOT IMPLEMENTED");
+            default:
+                throw std::runtime_error("UNKNOWN_COMMAND");
+        }
     }
 
     std::size_t ProtocolHandler::parse_request(std::string_view raw_msg, Request &out) {
@@ -36,32 +77,35 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
 
         if (!payload_size.parse(raw_msg.substr(6, 8)))
             throw std::runtime_error("MESSAGE_TOO_LONG");
-        header_size = this->header_size(payload_size.byte_size());
-        if (raw_msg.size() < header_size + payload_size.to_number())
+        header_size = base_header_size + payload_size.byte_size();
+        if (raw_msg.size() < header_size + payload_size.to_number()) {
             return 0; // Payload is not complete, 0 bytes parsed
-
-        std::shared_ptr<IRequestData> request_data = get_request_data(command_code, message_id, raw_msg.substr(header_size, payload_size.to_number()));
+        }
+        std::shared_ptr<IRequestData> request_data = get_request_data(command_code, raw_msg.substr(header_size, payload_size.to_number()));
 
         out.code = command_code;
+        out.message_id = message_id;
         out.request = request_data;
         // TODO: check the whole payload_size has been parsed: if there is leftovers -> BAD_REQUEST
         return header_size + payload_size.to_number();
     }
 
-    std::shared_ptr<IRequestData> ProtocolHandler::get_request_data(CommandCode cmd, std::uint8_t message_id, std::string_view payload) {
+    std::shared_ptr<IRequestData> ProtocolHandler::get_request_data(CommandCode cmd, std::string_view payload) {
         switch (cmd) {
+            case CommandCode::RESPONSE:
+                return parse_response(payload);
             case CommandCode::SEND_FILE:
-                return parse_send_file(message_id, payload);
-            case CommandCode::RECIVE_FILE:
-                return parse_receive_file(message_id, payload);
+                return parse_send_file(payload);
+            case CommandCode::RECEIVE_FILE:
+                return parse_receive_file(payload);
             case CommandCode::LIST_FILES:
-                return parse_list_files(message_id, payload);
+                return parse_list_files(payload);
             case CommandCode::FILE_LIST:
-                return parse_file_list(message_id, payload);
+                return parse_file_list(payload);
             case CommandCode::PING:
-                return parse_ping(message_id, payload);
+                return parse_ping(payload);
             case CommandCode::DATA_PACKET:
-                return parse_data_packet(message_id, payload);
+                return parse_data_packet(payload);
             case CommandCode::PAIR_REQUEST:
             case CommandCode::ACCEPT_PAIR_REQUEST:
                 throw std::runtime_error("TODO: NOT IMPLEMENTED");
@@ -75,50 +119,82 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
     // |      4      | |        1       | |       1      | |    MAX(8)    |
     // |    STRING   | |      ENUM      | |       -      | |    VARINT    |
     // --------------------------------------------------------------------
+    // |    STATUS   |
+    // |      1      |
+    // |     ENUM    |
+    // ---------------
+    std::string ProtocolHandler::format_response(std::uint8_t message_id, const ResponseData &data) {
+        std::string result;
+        Utils::VarInt payload_size = 1;
+
+        result.reserve(4 + 1 + 1 + payload_size.byte_size() + payload_size.to_number());
+        result += magic_bytes;
+        result += (char)CommandCode::RESPONSE;
+        result += message_id;
+        result += payload_size.to_string();
+        result += (char)data.status;
+        return result;
+    }
+
+    std::shared_ptr<IRequestData> ProtocolHandler::parse_response(std::string_view payload) {
+        ResponseData data;
+        Utils::VarInt varint;
+
+        if (payload.size() < 1)
+            throw std::runtime_error("BAD_REQUEST");
+        data.status = (StatusCode)payload[0];
+        return std::make_shared<ResponseData>(data);
+    }
+
+    // --------------------------------------------------------------------
+    // | MAGIC_BYTES | |  COMMAND_CODE  | |  MESSAGE_ID  | | PAYLOAD_SIZE |
+    // |      4      | |        1       | |       1      | |    MAX(8)    |
+    // |    STRING   | |      ENUM      | |       -      | |    VARINT    |
+    // --------------------------------------------------------------------
     // |FILEPATH_SIZE| |    FILEPATH    | | HASH_TYPE | |    FILE_HASH    |
     // |      -      | | FILEPATH_SIZE  | |     1     | |  HASH_TYPE_SIZE |
     // |   VARINT    | |     STRING     | |    ENUM   | |      STRING     |
     // --------------------------------------------------------------------
-    // |  UPDATED_AT | | TOTAL_PACKETS  |
-    // |      8      | |       -        |
-    // |  SIGNED INT | |     VARINT     |
-    // ----------------------------------
-    std::string ProtocolHandler::format_send_file(std::uint8_t message_id, std::string filepath, Utils::HashAlgorithm algo) {
+    // |  UPDATED_AT | |  PACKET_SIZE   | | TOTAL_PACKETS  |
+    // |      8      | |       -        | |       -        |
+    // |  SIGNED INT | |     VARINT     | |     VARINT     |
+    // -----------------------------------------------------
+    std::string ProtocolHandler::format_send_file(std::uint8_t message_id, const SendFileData &data) {
         std::string result;
-        Utils::VarInt filepath_size = filepath.size();
-        std::string file_hash = Utils::file_hash(algo, filepath);
-        std::filesystem::file_time_type file_updated_at = std::filesystem::last_write_time(filepath);
-        std::int64_t updated_at = Utils::to_epoch(file_updated_at);
-        std::size_t file_size = std::filesystem::file_size(filepath);
-        Utils::VarInt total_packets = file_size / packet_size + (file_size % packet_size == 0 ? 0 : 1);
+        std::int64_t updated_at = Utils::to_epoch(data.last_updated);
+        Utils::VarInt filepath_size = data.filepath.size();
+        Utils::VarInt packet_size = data.packet_size;
+        Utils::VarInt total_packets = data.total_packets;
 
-        if (file_hash.size() != Utils::algo_hash_size(algo))
+        if (data.filehash.size() != Utils::algo_hash_size(data.hash_algorithm))
             throw std::runtime_error("Wrong hash size");
 
         Utils::VarInt payload_size = filepath_size.byte_size() + filepath_size.to_number() +
-            1 + file_hash.size() + 8 + total_packets.byte_size();
+            1 + data.filehash.size() + 8 + packet_size.byte_size() + total_packets.byte_size();
+
         result.reserve(4 + 1 + 1 + payload_size.byte_size() + payload_size.to_number());
         result += magic_bytes;
         result += (char)CommandCode::SEND_FILE;
         result += message_id;
         result += payload_size.to_string();
         result += filepath_size.to_string();
-        result += filepath;
-        result += (std::uint8_t)algo;
-        result += file_hash;
+        result += data.filepath;
+        result += (std::uint8_t)data.hash_algorithm;
+        result += data.filehash;
         result += Utils::serialize(updated_at);
+        result += packet_size.to_string();
         result += total_packets.to_string();
         return result;
     }
 
-    std::shared_ptr<IRequestData> ProtocolHandler::parse_send_file(std::uint8_t message_id, std::string_view payload) {
-        SendFileData data(message_id);
+    std::shared_ptr<IRequestData> ProtocolHandler::parse_send_file(std::string_view payload) {
+        SendFileData data;
         Utils::VarInt varint;
         std::size_t algo_size;
         std::uint64_t updated_at;
 
         if (!varint.parse(payload, payload))
-            throw std::runtime_error("MESSAGE_TOO_LONG");
+            throw std::runtime_error("BAD_REQUEST");
         if (payload.size() < varint.to_number())
             throw std::runtime_error("BAD_REQUEST");
         data.filepath = payload.substr(0, varint.to_number());
@@ -134,6 +210,9 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         payload = payload.substr(8);
         if (!varint.parse(payload, payload))
             throw std::runtime_error("BAD_REQUEST");
+        data.packet_size = varint.to_number();
+        if (!varint.parse(payload, payload))
+            throw std::runtime_error("BAD_REQUEST");
         data.total_packets = varint.to_number();
         return std::make_shared<SendFileData>(data);
     }
@@ -147,32 +226,32 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
     // |      -      | |  FILEPATH_SIZE | |       -      | |       -        |
     // |   VARINT    | |        -       | |    VARINT    | |     VARINT     |
     // ----------------------------------------------------------------------
-    std::string ProtocolHandler::format_receive_file(std::uint8_t message_id, std::string filepath, std::size_t packet_size, std::size_t packet_start) {
+    std::string ProtocolHandler::format_receive_file(std::uint8_t message_id, const ReceiveFileData &data) {
         std::string result;
-        Utils::VarInt filepath_size = filepath.size();
+        Utils::VarInt filepath_size = data.filepath.size();
         Utils::VarInt v_packet_size = packet_size;
-        Utils::VarInt v_packet_start = packet_start;
+        Utils::VarInt v_packet_start = data.packet_start;
 
         Utils::VarInt payload_size = filepath_size.byte_size() + filepath_size.to_number() +
             v_packet_size.byte_size() + v_packet_start.byte_size();
         result.reserve(4 + 1 + 1 + payload_size.byte_size() + payload_size.to_number());
         result += magic_bytes;
-        result += (char)CommandCode::RECIVE_FILE;
+        result += (char)CommandCode::RECEIVE_FILE;
         result += message_id;
         result += payload_size.to_string();
         result += filepath_size.to_string();
-        result += filepath;
+        result += data.filepath;
         result += v_packet_size.to_string();
         result += v_packet_start.to_string();
         return result;
     }
 
-    std::shared_ptr<IRequestData> ProtocolHandler::parse_receive_file(std::uint8_t message_id, std::string_view payload) {
-        ReceiveFileData data(message_id);
+    std::shared_ptr<IRequestData> ProtocolHandler::parse_receive_file(std::string_view payload) {
+        ReceiveFileData data;
         Utils::VarInt varint;
 
         if (!varint.parse(payload, payload))
-            throw std::runtime_error("MESSAGE_TOO_LONG");
+            throw std::runtime_error("BAD_REQUEST");
         if (payload.size() < varint.to_number())
             throw std::runtime_error("BAD_REQUEST");
         data.filepath = payload.substr(0, varint.to_number());
@@ -191,36 +270,34 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
     // |       4       | |        1        | |       1      | |     MAX(8)     |
     // |    STRING     | |       ENUM      | |       -      | |     VARINT     |
     // -------------------------------------------------------------------------
-    // |FOLDERPATH_SIZE| |   FOLDERPATH    | |    PAGE_NB   | |    PAGE_SIZE   |
-    // |       -       | | FOLDERPATH_SIZE | |       -      | |        -       |
-    // |    VARINT     | |     STRING      | |     VARINT   | |      VARINT    |
-    // -------------------------------------------------------------------------
-    std::string ProtocolHandler::format_list_files(std::uint8_t message_id, std::string folderpath, std::size_t page_idx, std::size_t page_size) {
+    // |FOLDERPATH_SIZE| |   FOLDERPATH    | |    PAGE_NB   |
+    // |       -       | | FOLDERPATH_SIZE | |       -      |
+    // |    VARINT     | |     STRING      | |     VARINT   |
+    // ------------------------------------------------------
+    std::string ProtocolHandler::format_list_files(std::uint8_t message_id, const ListFilesData &data) {
         std::string result;
-        Utils::VarInt folderpath_size = folderpath.size();
-        Utils::VarInt v_page_idx = page_idx;
-        Utils::VarInt v_page_size = page_size;
+        Utils::VarInt folderpath_size = data.folderpath.size();
+        Utils::VarInt v_page_idx = data.page_nb;
 
         Utils::VarInt payload_size = folderpath_size.byte_size() + folderpath_size.to_number() +
-            v_page_idx.byte_size() + v_page_size.byte_size();
+            v_page_idx.byte_size();
         result.reserve(4 + 1 + 1 + payload_size.byte_size() + payload_size.to_number());
         result += magic_bytes;
         result += (char)CommandCode::LIST_FILES;
         result += message_id;
         result += payload_size.to_string();
         result += folderpath_size.to_string();
-        result += folderpath;
+        result += data.folderpath;
         result += v_page_idx.to_string();
-        result += v_page_size.to_string();
         return result;
     }
 
-    std::shared_ptr<IRequestData> ProtocolHandler::parse_list_files(std::uint8_t message_id, std::string_view payload) {
-        ListFilesData data(message_id);
+    std::shared_ptr<IRequestData> ProtocolHandler::parse_list_files(std::string_view payload) {
+        ListFilesData data;
         Utils::VarInt varint;
 
         if (!varint.parse(payload, payload))
-            throw std::runtime_error("MESSAGE_TOO_LONG");
+            throw std::runtime_error("BAD_REQUEST");
         if (payload.size() < varint.to_number())
             throw std::runtime_error("BAD_REQUEST");
         data.folderpath = payload.substr(0, varint.to_number());
@@ -228,9 +305,6 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         if (!varint.parse(payload, payload))
             throw std::runtime_error("BAD_REQUEST");
         data.page_nb = varint.to_number();
-        if (!varint.parse(payload, payload))
-            throw std::runtime_error("BAD_REQUEST");
-        data.page_size = varint.to_number();
         return std::make_shared<ListFilesData>(data);
     }
 
@@ -247,15 +321,15 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
     // |  ITEM_COUNT [      -      ,    STRING    ,     1    ] |
     // |      -      [    VARINT   , FILEPATH_SIZE,    ENUM  ] |
     // ---------------------------------------------------------
-    std::string ProtocolHandler::format_file_list(std::uint8_t message_id, std::vector<FileInfo> files, std::size_t page_idx, std::size_t total_pages) {
+    std::string ProtocolHandler::format_file_list(std::uint8_t message_id, const FileListData &data) {
         std::string result;
         std::size_t array_total_size = 0;
-        Utils::VarInt item_count = files.size();
-        Utils::VarInt v_page_idx = page_idx;
-        Utils::VarInt v_total_pages = total_pages;
+        Utils::VarInt item_count = data.files.size();
+        Utils::VarInt v_page_idx = data.page.current;
+        Utils::VarInt v_total_pages = data.page.total;
         Utils::VarInt payload_size = 0;
 
-        for (const auto &file : files) {
+        for (const auto &file : data.files) {
             Utils::VarInt v = file.path.size();
 
             array_total_size += v.byte_size() + v.to_number() + 1;
@@ -271,7 +345,7 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         result += v_page_idx.to_string();
         result += item_count.to_string();
 
-        for (const auto &file : files) {
+        for (const auto &file : data.files) {
             Utils::VarInt v = file.path.size();
 
             result += v.to_string();
@@ -281,17 +355,17 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         return result;
     }
 
-    std::shared_ptr<IRequestData> ProtocolHandler::parse_file_list(std::uint8_t message_id, std::string_view payload) {
-        FileListData data(message_id);
+    std::shared_ptr<IRequestData> ProtocolHandler::parse_file_list(std::string_view payload) {
+        FileListData data;
         Utils::VarInt varint;
         std::size_t nb_items;
 
         if (!varint.parse(payload, payload))
-            throw std::runtime_error("MESSAGE_TOO_LONG");
-        data.total_pages = varint.to_number();
+            throw std::runtime_error("BAD_REQUEST");
+        data.page.total = varint.to_number();
         if (!varint.parse(payload, payload))
             throw std::runtime_error("BAD_REQUEST");
-        data.current_page = varint.to_number();
+        data.page.current = varint.to_number();
         if (!varint.parse(payload, payload))
             throw std::runtime_error("BAD_REQUEST");
         nb_items = varint.to_number();
@@ -312,51 +386,41 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         return std::make_shared<FileListData>(data);
     }
 
-    // -------------------------------------------------------------------------
-    // |  MAGIC_BYTES  | |   COMMAND_CODE  | |  MESSAGE_ID  | |  PAYLOAD_SIZE  |
-    // |       4       | |        1        | |       1      | |     MAX(8)     |
-    // |    STRING     | |       ENUM      | |       -      | |     VARINT     |
-    // -------------------------------------------------------------------------
-    // | FILEPATH_SIZE | |    FILEPATH     | |   PACKET_NB  | |   PACKET_SIZE  |
-    // |       -       | |  FILEPATH_SIZE  | |       -      | |        -       |
-    // |    VARINT     | |     STRING      | |     VARINT   | |      VARINT    |
-    // -------------------------------------------------------------------------
-    // |  PACKET_DATA  |
-    // |  PACKET_SIZE  |
-    // |     STRING    |
-    // -----------------
-    std::string ProtocolHandler::format_data_packet(std::uint8_t message_id, std::string filepath, std::size_t packet_idx, std::string_view data) {
+    // ---------------------------------------------------------------------
+    // |  MAGIC_BYTES  | | COMMAND_CODE | |  MESSAGE_ID  | | PAYLOAD_SIZE  |
+    // |       4       | |      1       | |       1      | |    MAX(8)     |
+    // |    STRING     | |     ENUM     | |       -      | |    VARINT     |
+    // ---------------------------------------------------------------------
+    // |   REQUEST_ID  | |   PACKET_ID  | | PACKET_SIZE  | |  PACKET_DATA  |
+    // |       1       | |       -      | |      -       | |  PACKET_SIZE  |
+    // |       -       | |     VARINT   | |    VARINT    | |     STRING    |
+    // ---------------------------------------------------------------------
+    std::string ProtocolHandler::format_data_packet(std::uint8_t message_id, const DataPacketData &data) {
         std::string result;
-        Utils::VarInt filepath_size = filepath.size();
-        Utils::VarInt packet_nb = packet_idx;
-        Utils::VarInt packet_size = data.size();
+        Utils::VarInt packet_id = data.packet_id;
+        Utils::VarInt packet_size = data.data.size();
 
-        Utils::VarInt payload_size = filepath_size.byte_size() + filepath_size.to_number() + packet_nb.byte_size() + packet_size.byte_size() +
+        Utils::VarInt payload_size = 1 + packet_id.byte_size() + packet_size.byte_size() +
             packet_size.to_number();
         result.reserve(4 + 1 + 1 + payload_size.byte_size());
         result += magic_bytes;
         result += (char)CommandCode::DATA_PACKET;
         result += message_id;
         result += payload_size.to_string();
-        result += filepath_size.to_string();
-        result += filepath;
-        result += packet_nb.to_string();
+        result += data.request_id;
+        result += packet_id.to_string();
         result += packet_size.to_string();
-        result += data;
+        result += data.data;
         return result;
     }
 
-    std::shared_ptr<IRequestData> ProtocolHandler::parse_data_packet(std::uint8_t message_id, std::string_view payload) {
-        DataPacketData data(message_id);
+    std::shared_ptr<IRequestData> ProtocolHandler::parse_data_packet(std::string_view payload) {
+        DataPacketData data;
         Utils::VarInt varint;
         std::size_t nb_items;
 
-        if (!varint.parse(payload, payload))
-            throw std::runtime_error("MESSAGE_TOO_LONG");
-        if (payload.size() < varint.to_number())
-            throw std::runtime_error("BAD_REQUEST");
-        data.filepath = payload.substr(0, varint.to_number());
-        payload = payload.substr(varint.to_number());
+        data.request_id = payload[0];
+        payload = payload.substr(1);
         if (!varint.parse(payload, payload))
             throw std::runtime_error("BAD_REQUEST");
         data.packet_id = varint.to_number();
@@ -364,7 +428,6 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
             throw std::runtime_error("BAD_REQUEST");
         if (payload.size() < varint.to_number())
             throw std::runtime_error("BAD_REQUEST");
-        data.packet_size = varint.to_number();
         data.data = payload.substr(0, varint.to_number());
         return std::make_shared<DataPacketData>(data);
     }
@@ -374,7 +437,7 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
     // |     4     | |        1       | |       1      | |    MAX(8)    |
     // |   STRING  | |      ENUM      | |       -      | |    VARINT    |
     // ------------------------------------------------------------------
-    std::string ProtocolHandler::format_ping(std::uint8_t message_id) {
+    std::string ProtocolHandler::format_ping(std::uint8_t message_id, const PingData &data) {
         std::string result;
         static const Utils::VarInt payload_size = 0;
 
@@ -386,7 +449,7 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         return result;
     }
 
-    std::shared_ptr<IRequestData> ProtocolHandler::parse_ping(std::uint8_t message_id, std::string_view payload) {
-        return std::make_shared<PingData>(message_id);
+    std::shared_ptr<IRequestData> ProtocolHandler::parse_ping(std::string_view payload) {
+        return std::make_shared<PingData>();
     }
 }

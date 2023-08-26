@@ -4,13 +4,14 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Tue Jul 18 08:55:17 2023 Francois Michaut
+** Last update Thu Aug 24 09:40:36 2023 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -22,13 +23,16 @@ namespace FileShare::Protocol {
 
     // 1 byte - 0-0xFF
     enum class CommandCode {
+        RESPONSE            = 0x00,
+
         SEND_FILE           = 0x10,
-        RECIVE_FILE         = 0x11,
+        RECEIVE_FILE        = 0x11,
 
         LIST_FILES          = 0x20,
         FILE_LIST           = 0x21,
 
         PING                = 0x30,
+        APPROVAL_STATUS     = 0x40,
         DATA_PACKET         = 0x42,
 
         PAIR_REQUEST        = 0x50,
@@ -45,7 +49,7 @@ namespace FileShare::Protocol {
                                     // TODO: figure out next step on approval/reject ?
 
         BAD_REQUEST         = 0x40,
-        INVALID_PATH        = 0x42,
+        INVALID_REQUEST_ID  = 0x42,
         FORBIDDEN           = 0x43,
         FILE_NOT_FOUND      = 0x44,
         UNKNOWN_COMMAND     = 0x45,
@@ -63,6 +67,7 @@ namespace FileShare::Protocol {
     struct Request {
         CommandCode code;
         std::shared_ptr<IRequestData> request;
+        std::uint8_t message_id;
     };
 
     template<class T>
@@ -81,4 +86,15 @@ namespace FileShare::Protocol {
         std::size_t page_nb;
         std::size_t total_pages;
     };
+
+    struct Page {
+        Page() = default;
+        Page(std::size_t current, std::size_t total);
+
+        std::size_t total;
+        std::size_t current;
+    };
 }
+
+std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::StatusCode& status);
+std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::CommandCode& command);

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed May 17 08:06:48 2023 Francois Michaut
-** Last update Wed May 17 09:02:47 2023 Francois Michaut
+** Last update Sat Aug 26 18:43:57 2023 Francois Michaut
 **
 ** Serialize.cpp : Implementation of utilities to serialize numbers
 */
@@ -22,7 +22,7 @@ namespace FileShare::Utils {
         std::string str;
 
         str.reserve(8);
-        while (value != 0) {
+        for (std::uint8_t i = 0; i < 8; i++) {
             str += value & 0xFF;
             value >>= 8;
         }
