@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 19:01:51 2022 Francois Michaut
-** Last update Sat Jul 22 21:58:00 2023 Francois Michaut
+** Last update Tue Aug 22 22:05:44 2023 Francois Michaut
 **
 ** Server.hpp : Server part used to receive qnd process requests of Clients
 */
@@ -24,7 +24,6 @@ namespace FileShare {
             using ClientAcceptCallback = std::function<bool(Server &, std::shared_ptr<Client> &client)>;
             using ClientRequestCallback = std::function<void(Server &, std::shared_ptr<Client> &peer, Protocol::Request &req)>;
 
-            // TODO: find a better way for this
             class Event {
                 public:
                     Event() = default;
@@ -62,7 +61,7 @@ namespace FileShare {
              // Otherwise server won't accept incomming connections or process
              // incomming/outgoing messages.
             void process_events(ClientAcceptCallback accept_cb, ClientRequestCallback request_cb);
-            bool pull_event(Event &result);
+            bool pull_event(Event &result); // TODO: figure out how to accept commands here
 
             std::map<RawSocketType, std::shared_ptr<Client>> &get_clients();
             const std::map<RawSocketType, std::shared_ptr<Client>> &get_clients() const;

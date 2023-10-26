@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 25 23:16:42 2022 Francois Michaut
-** Last update Thu Aug 24 09:44:46 2023 Francois Michaut
+** Last update Sun Oct 22 14:05:48 2023 Francois Michaut
 **
 ** Protocol.cpp : Implementation of the main Protocol class
 */
@@ -43,6 +43,8 @@ std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::StatusCode
     switch (status) {
         case StatusCode::STATUS_OK:
             return os << "STATUS_OK";
+        case StatusCode::UP_TO_DATE:
+            return os << "UP_TO_DATE";
         case StatusCode::MESSAGE_TOO_LONG:
             return os << "MESSAGE_TOO_LONG";
         case StatusCode::APPROVAL_PENDING:

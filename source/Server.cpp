@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Sat Aug 26 19:22:24 2023 Francois Michaut
+** Last update Tue Oct 24 08:39:47 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -118,6 +118,7 @@ namespace FileShare {
         insert_client(std::move(peer));
     }
 
+    // TODO: do not accept double connection from clients
     std::shared_ptr<Client> &Server::insert_client(std::shared_ptr<Client> client) {
         auto result = m_clients.emplace(client->get_socket().get_fd(), std::move(client));
 

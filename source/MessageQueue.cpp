@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Aug 22 18:25:07 2023 Francois Michaut
-** Last update Sat Aug 26 17:37:43 2023 Francois Michaut
+** Last update Tue Oct 24 08:52:07 2023 Francois Michaut
 **
 ** MessageQueue.cpp : Implementation of the queue representing the messages sent/received and their status
 */
@@ -19,9 +19,14 @@ namespace FileShare {
         m_available_send_slots--;
 
         while (m_outgoing_requests.contains(m_message_id)) {
-            if (m_outgoing_requests.at(m_message_id).status.has_value())
-                break; // If there is a status already, this is an old request, we can replace it
-                       // TODO: also ignore APPROVAL_PENDING
+            auto status = m_outgoing_requests.at(m_message_id).status;
+            if (status.has_value() && status.value() != Protocol::StatusCode::APPROVAL_PENDING) {
+                // If there is a status already, this is an old request, we can replace it
+                // Except for APPROVAL_PENDING, since we are waiting for an anwser
+                // NOTE: Not vulnerable to DOS attack, since peer would only be able to DOS
+                // itself if it fills message_queue with APPROVAL_PENDING
+                break;
+            }
             if (m_message_id == 255) {
                 m_message_id = 0;
             } else {
@@ -30,12 +35,14 @@ namespace FileShare {
         }
         request.message_id = m_message_id;
         m_outgoing_requests[m_message_id] = Message{std::move(request), {}, ""};
-        return m_message_id;
+        return m_message_id++; // Will return value before incrementation
     }
 
     std::uint8_t MessageQueue::receive_request(Protocol::Request request) {
-        m_incomming_requests[request.message_id] = Message{std::move(request), {}, ""};
-        return request.message_id;
+        std::uint8_t message_id = request.message_id;
+
+        m_incomming_requests[message_id] = Message{std::move(request), {}, ""};
+        return message_id;
     }
 
     void MessageQueue::send_reply(std::uint8_t request_id, Protocol::StatusCode status_code) {

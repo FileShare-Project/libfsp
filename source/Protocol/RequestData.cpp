@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Jul 18 22:04:57 2023 Francois Michaut
-** Last update Sat Aug 26 19:05:38 2023 Francois Michaut
+** Last update Sun Oct 22 13:16:24 2023 Francois Michaut
 **
 ** RequestData.cpp : RequestData implementation for the requests payloads
 */
@@ -74,7 +74,7 @@ namespace FileShare::Protocol {
         ss << "DataPacketData{"
            << "request_id = " << (int)request_id
            << ", packed_id = " << packet_id
-           << ", data = " << data
+           << ", data_size = " << data.size()
            << "}";
         return ss.str();
     }

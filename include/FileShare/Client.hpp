@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:23:07 2022 Francois Michaut
-** Last update Sat Aug 26 18:58:04 2023 Francois Michaut
+** Last update Tue Oct 24 22:48:59 2023 Francois Michaut
 **
 ** Client.hpp : Client to communicate with peers with the FileShareProtocol
 */
@@ -91,6 +91,7 @@ namespace FileShare {
             std::string m_buffer;
             std::vector<Protocol::Request> m_request_buffer;
             std::unordered_map<std::uint8_t, DownloadTransferHandler> m_download_transfers;
+            std::unordered_map<std::uint8_t, UploadTransferHandler> m_upload_transfers;
             MessageQueue m_message_queue;
     };
 }

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Thu Aug 24 09:40:36 2023 Francois Michaut
+** Last update Sun Oct 22 13:59:56 2023 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
@@ -43,6 +43,7 @@ namespace FileShare::Protocol {
     enum class StatusCode {
         STATUS_OK           = 0x00,
 
+        UP_TO_DATE          = 0x22,
         MESSAGE_TOO_LONG    = 0x24,
 
         APPROVAL_PENDING    = 0x33, // SEND_FILE / RECEIVE_FILE needing user confirmation
