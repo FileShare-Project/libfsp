@@ -4,13 +4,12 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 20:50:53 2022 Francois Michaut
-** Last update Wed Oct 25 21:23:08 2023 Francois Michaut
+** Last update Thu Nov  9 20:01:37 2023 Francois Michaut
 **
 ** Client.cpp : Implementation of the FileShareProtocol Client
 */
 
 #include "FileShare/Client.hpp"
-#include "FileShare/Errors/TransferErrors.hpp"
 #include "FileShare/Protocol/Protocol.hpp"
 #include "FileShare/Protocol/RequestData.hpp"
 #include "FileShare/Server.hpp"
@@ -81,17 +80,17 @@ namespace FileShare {
 
         if (request.code == Protocol::CommandCode::SEND_FILE) {
             std::shared_ptr<Protocol::SendFileData> data = std::dynamic_pointer_cast<Protocol::SendFileData>(request.request);
-            std::filesystem::path filepath(data->filepath);
 
-            try {
-                m_download_transfers.emplace(
-                    std::piecewise_construct,
-                    std::forward_as_tuple(request.message_id),
-                    std::forward_as_tuple(m_config.get_downloads_folder() / m_device_uuid / filepath.filename(), data)
-                );
-            } catch (Errors::Transfer::UpToDateError) {
-                return send_reply(request.message_id, Protocol::StatusCode::UP_TO_DATE);
-            }
+            create_download(request.message_id, data);
+            return; // create_download already sends reply to request
+        } else if (request.code == Protocol::CommandCode::RECEIVE_FILE) {
+            std::shared_ptr<Protocol::ReceiveFileData> data = std::dynamic_pointer_cast<Protocol::ReceiveFileData>(request.request);
+            std::filesystem::path filepath(data->filepath); // TODO: add filepath root translation
+
+            // Send reply to original RECEIVE_FILE before SEND_FILE
+            send_reply(request.message_id, Protocol::StatusCode::STATUS_OK);
+            create_upload(filepath, data->packet_size, data->packet_start);
+            return;
         } else if (request.code == Protocol::CommandCode::DATA_PACKET) {
             auto data = std::dynamic_pointer_cast<Protocol::DataPacketData>(request.request);
 
@@ -105,26 +104,16 @@ namespace FileShare {
     }
 
     Protocol::Response<void> Client::send_file(std::string filepath, ProgressCallback progress_callback) {
-        constexpr std::size_t packet_size = 4096; // TODO: find a better place for this, duplicated from ProtocolHandler
+        // TODO: add filepath root translation
+        auto result = create_upload(filepath);
+        Protocol::MessageID message_id = result->first;
+        UploadTransferHandler &upload_handler = result->second;
+        Protocol::StatusCode status = wait_for_status(message_id);
 
-        UploadTransferHandler handler(filepath, Utils::HashAlgorithm::SHA512, packet_size);
-        std::shared_ptr<Protocol::SendFileData> send_file_data = handler.get_original_request();
-        std::uint8_t message_id = send_request(Protocol::CommandCode::SEND_FILE, send_file_data);
-
-        auto result = m_upload_transfers.emplace(
-            std::piecewise_construct,
-            std::forward_as_tuple(message_id),
-            std::forward_as_tuple(std::move(handler))
-        );
-        UploadTransferHandler &upload_handler = result.first->second;
-        const std::optional<Protocol::StatusCode> &status = m_message_queue.get_outgoing_requests().at(message_id).status;
-
-        while (!status.has_value() || status.value() == Protocol::StatusCode::APPROVAL_PENDING) {
-            poll_requests();
-        }
-        if (status.value() != Protocol::StatusCode::STATUS_OK) {
-            m_upload_transfers.erase(result.first);
-            return {}; // TODO
+        // TODO: handle APPROVAL_PENDING
+        if (status != Protocol::StatusCode::STATUS_OK) {
+            m_upload_transfers.erase(result);
+            return {status};
         }
         while (!upload_handler.finished()) {
             if (m_message_queue.available_send_slots() > 0) {
@@ -139,24 +128,46 @@ namespace FileShare {
             }
         }
 
-        return {}; // TODO
+        return {status}; // TODO
     }
 
     Protocol::Response<void> Client::receive_file(std::string filepath, ProgressCallback progress_callback) {
         std::size_t packet_start = 0; // TODO
         std::size_t packet_size = 0; // TODO
         std::shared_ptr<Protocol::ReceiveFileData> receive_file_data = std::make_shared<Protocol::ReceiveFileData>(filepath, packet_size, packet_start);
-        std::uint8_t message_id = m_message_queue.send_request({Protocol::CommandCode::RECEIVE_FILE, receive_file_data});
-        // TODO: after initial send_file, wait for data_packet calls, calling progress_callback
-        std::string msg = m_protocol.handler().format_receive_file(message_id, *receive_file_data);
+        Protocol::MessageID message_id = send_request(Protocol::CommandCode::RECEIVE_FILE, receive_file_data);
+        Protocol::StatusCode status = wait_for_status(message_id);
 
-        m_socket.write(msg);
-        return {};
+        // TODO: handle APPROVAL_PENDING
+        if (status != Protocol::StatusCode::STATUS_OK) {
+            return {status};
+        }
+
+        auto incomming_requests = m_message_queue.get_incomming_requests();
+        auto request = std::find_if(incomming_requests.begin(), incomming_requests.end(), [&filepath](const auto &item) {
+            if (item.second.request.code != Protocol::CommandCode::SEND_FILE) {
+                return false;
+            }
+
+            auto original_data = std::dynamic_pointer_cast<Protocol::SendFileData>(item.second.request.request);
+            return filepath == original_data->filepath;
+        });
+        if (request == incomming_requests.end() || !m_download_transfers.contains(request->first)) {
+            return {status};
+        }
+        auto &transfer_handler = m_download_transfers.at(request->first);
+
+        while (!transfer_handler.finished()) {
+            progress_callback(filepath, transfer_handler.get_current_size(), transfer_handler.get_total_size());
+            poll_requests(); // TODO: currently blocking, but if it changes, needs to add a poll() call to avoid spamming loop
+        }
+
+        return {status}; // TODO
     }
 
     Protocol::Response<Protocol::FileList> Client::list_files(std::string folderpath, std::size_t page_nb) {
         std::shared_ptr<Protocol::ListFilesData> list_files_data = std::make_shared<Protocol::ListFilesData>(folderpath, page_nb);
-        std::uint8_t message_id = send_request(Protocol::CommandCode::LIST_FILES, list_files_data);
+        Protocol::MessageID message_id = send_request(Protocol::CommandCode::LIST_FILES, list_files_data);
 
         (void)message_id;
         // TODO: get response

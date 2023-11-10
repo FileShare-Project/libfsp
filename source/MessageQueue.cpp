@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Aug 22 18:25:07 2023 Francois Michaut
-** Last update Tue Oct 24 08:52:07 2023 Francois Michaut
+** Last update Thu Nov  9 09:02:38 2023 Francois Michaut
 **
 ** MessageQueue.cpp : Implementation of the queue representing the messages sent/received and their status
 */
@@ -50,8 +50,26 @@ namespace FileShare {
     }
 
     void MessageQueue::receive_reply(std::uint8_t request_id, Protocol::StatusCode status_code) {
-        m_outgoing_requests.at(request_id).status = status_code;
-        m_available_send_slots++;
+        auto &request = m_outgoing_requests.at(request_id);
+        bool is_approval_pending = false;
+        bool has_value = request.status.has_value();
+
+        if (has_value) {
+            auto value = request.status.value();
+
+            if (value == status_code) {
+                return;
+            }
+            is_approval_pending = value == Protocol::StatusCode::APPROVAL_PENDING;
+        }
+        // We only increment slots if there is no value, or the value is APPROVAL_PENDING,
+        // only if new value is not APPROVAL_PENDING.
+        // This is because if there is already a value; we don't want to count it twice,
+        // except for APPROVAL_PENDING since it is the only value we don't count
+        if ((!has_value || is_approval_pending) && status_code != Protocol::StatusCode::APPROVAL_PENDING) {
+            m_available_send_slots++;
+        }
+        request.status = status_code;
     }
 
     std::uint8_t MessageQueue::available_send_slots() const {

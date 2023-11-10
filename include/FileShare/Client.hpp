@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:23:07 2022 Francois Michaut
-** Last update Tue Oct 24 22:48:59 2023 Francois Michaut
+** Last update Sat Oct 28 11:15:11 2023 Francois Michaut
 **
 ** Client.hpp : Client to communicate with peers with the FileShareProtocol
 */
@@ -69,17 +69,22 @@ namespace FileShare {
 
         protected:
             static Config default_config();
+            using UploadTransferMap = std::unordered_map<Protocol::MessageID, UploadTransferHandler>;
+            using DownloadTransferMap = std::unordered_map<Protocol::MessageID, DownloadTransferHandler>;
 
         private:
-            Protocol::StatusCode wait_for_status(std::uint8_t message_id);
+            Protocol::StatusCode wait_for_status(Protocol::MessageID message_id);
             void poll_requests();
 
             void authorize_request(Protocol::Request request);
 
-            void receive_reply(std::uint8_t message_id, Protocol::StatusCode status);
-            void send_reply(std::uint8_t message_id, Protocol::StatusCode status);
+            void receive_reply(Protocol::MessageID message_id, Protocol::StatusCode status);
+            void send_reply(Protocol::MessageID message_id, Protocol::StatusCode status);
             std::uint8_t send_request(Protocol::CommandCode command, std::shared_ptr<Protocol::IRequestData> request_data);
             std::uint8_t send_request(Protocol::Request request);
+            UploadTransferMap::iterator create_upload(std::string filepath, std::size_t packet_size, std::size_t packet_start);
+            UploadTransferMap::iterator create_upload(std::string filepath);
+            DownloadTransferMap::iterator create_download(Protocol::MessageID message_id, const std::shared_ptr<Protocol::SendFileData> &data);
 
         private:
             CppSockets::TlsSocket m_socket;
@@ -90,8 +95,8 @@ namespace FileShare {
 
             std::string m_buffer;
             std::vector<Protocol::Request> m_request_buffer;
-            std::unordered_map<std::uint8_t, DownloadTransferHandler> m_download_transfers;
-            std::unordered_map<std::uint8_t, UploadTransferHandler> m_upload_transfers;
+            DownloadTransferMap m_download_transfers;
+            UploadTransferMap m_upload_transfers;
             MessageQueue m_message_queue;
     };
 }

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Sun Oct 22 13:59:56 2023 Francois Michaut
+** Last update Sat Oct 28 10:51:48 2023 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
@@ -32,7 +32,6 @@ namespace FileShare::Protocol {
         FILE_LIST           = 0x21,
 
         PING                = 0x30,
-        APPROVAL_STATUS     = 0x40,
         DATA_PACKET         = 0x42,
 
         PAIR_REQUEST        = 0x50,
@@ -64,11 +63,13 @@ namespace FileShare::Protocol {
         DIRECTORY  = 0x01,
     };
 
+    using MessageID = std::uint8_t;
+
     class IRequestData;
     struct Request {
         CommandCode code;
         std::shared_ptr<IRequestData> request;
-        std::uint8_t message_id;
+        MessageID message_id;
     };
 
     template<class T>

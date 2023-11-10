@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 24 19:36:36 2023 Francois Michaut
-** Last update Wed Oct 25 21:02:02 2023 Francois Michaut
+** Last update Thu Oct 26 20:42:27 2023 Francois Michaut
 **
 ** TransferHandler.cpp : Implementation of classes to handle the file transfers
 */
@@ -105,7 +105,7 @@ namespace FileShare {
         return m_original_request;
     }
 
-    UploadTransferHandler::UploadTransferHandler(std::string filepath, Utils::HashAlgorithm hash_algo, std::size_t packet_size) :
+    UploadTransferHandler::UploadTransferHandler(std::string filepath, Utils::HashAlgorithm hash_algo, std::size_t packet_size, std::size_t packet_start) :
         m_filepath(filepath), m_hash_algo(hash_algo), m_packet_size(packet_size)
     {
         std::string file_hash = Utils::file_hash(Utils::HashAlgorithm::SHA512, filepath);
@@ -114,9 +114,14 @@ namespace FileShare {
         std::size_t file_size = std::filesystem::file_size(filepath);
         std::size_t total_packets = file_size / packet_size + (file_size % packet_size == 0 ? 0 : 1);
 
+        if (packet_start > total_packets) {
+            throw std::runtime_error("Invalid Packet Start");
+        }
+        total_packets -= packet_start;
         m_original_request = std::make_shared<Protocol::SendFileData>(filepath, Utils::HashAlgorithm::SHA512, file_hash, file_updated_at, packet_size, total_packets);
         m_file.open(filepath);
         m_file.exceptions(std::ifstream::badbit); // Enable exceptions on IO operations
+        m_file.seekg(packet_size * packet_start);
     }
 
     std::shared_ptr<Protocol::DataPacketData> UploadTransferHandler::get_next_packet(std::uint8_t original_request_id) {

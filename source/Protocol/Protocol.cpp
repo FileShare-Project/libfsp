@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 25 23:16:42 2022 Francois Michaut
-** Last update Sun Oct 22 14:05:48 2023 Francois Michaut
+** Last update Thu Nov  9 12:17:45 2023 Francois Michaut
 **
 ** Protocol.cpp : Implementation of the main Protocol class
 */
@@ -90,8 +90,6 @@ std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::CommandCod
 
         case CommandCode::PING:
             return os << "PING";
-        case CommandCode::APPROVAL_STATUS:
-            return os << "APPROVAL_STATUS";
         case CommandCode::DATA_PACKET:
             return os << "DATA_PACKET";
 
