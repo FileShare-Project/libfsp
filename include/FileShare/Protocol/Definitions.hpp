@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Sat Oct 28 10:51:48 2023 Francois Michaut
+** Last update Sat Nov 11 17:31:46 2023 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
@@ -58,6 +58,12 @@ namespace FileShare::Protocol {
         INTERNAL_ERROR      = 0x50,
     };
 
+    CommandCode str_to_command(std::string str);
+    StatusCode str_to_status(std::string str);
+
+    std::string command_to_str(CommandCode code);
+    std::string status_to_str(StatusCode code);
+
     enum class FileType {
         FILE       = 0x00,
         DIRECTORY  = 0x01,
@@ -100,3 +106,5 @@ namespace FileShare::Protocol {
 
 std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::StatusCode& status);
 std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::CommandCode& command);
+std::istream& operator>>(std::istream& is, FileShare::Protocol::StatusCode& status);
+std::istream& operator>>(std::istream& is, FileShare::Protocol::CommandCode& command);

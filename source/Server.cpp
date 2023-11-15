@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Tue Oct 24 08:39:47 2023 Francois Michaut
+** Last update Tue Nov 14 21:25:07 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -73,6 +73,7 @@ namespace FileShare {
     const Config &Server::get_config() const { return m_config; }
     void Server::set_config(const Config &config) { m_config = config; }
     const CppSockets::TlsSocket &Server::get_socket() const { return m_socket; }
+    const CppSockets::IEndpoint &Server::get_server_endpoint() const { return *m_server_endpoint; }
     bool Server::disabled() const { return m_config.is_server_disabled(); }
     std::map<RawSocketType, std::shared_ptr<Client>> &Server::get_clients() { return m_clients; }
 
@@ -96,8 +97,10 @@ namespace FileShare {
     bool Server::pull_event(Event &result) {
         if (m_events.empty())
             poll_events();
-        if (m_events.empty())
+        if (m_events.empty()) {
+            result = {};
             return false;
+        }
         result = std::move(m_events.back());
         m_events.pop_back();
         return true;
@@ -120,7 +123,7 @@ namespace FileShare {
 
     // TODO: do not accept double connection from clients
     std::shared_ptr<Client> &Server::insert_client(std::shared_ptr<Client> client) {
-        auto result = m_clients.emplace(client->get_socket().get_fd(), std::move(client));
+        const auto &result = m_clients.emplace(client->get_socket().get_fd(), std::move(client));
 
         return result.first->second; // TODO: check this does return a reference
     }
@@ -135,12 +138,12 @@ namespace FileShare {
 
         fds.reserve(nfds);
         fds.emplace_back(m_socket.get_fd(), POLLIN, 0);
-        for (auto iter = m_clients.begin(); iter != m_clients.end(); iter++) {
-            fds.emplace_back(iter->first, POLLIN, 0);
+        for (auto &iter : m_clients) {
+            fds.emplace_back(iter.first, POLLIN, 0);
         }
         nb_ready = ppoll(fds.data(), nfds, &timeout, nullptr);
-        if (nb_ready < 0) // TODO: handle signals
-            throw std::runtime_error("Failed to poll");
+        // if (nb_ready < 0) // TODO: handle signals
+        //     throw std::runtime_error("Failed to poll");
         for (auto iter = fds.begin(); nb_ready > 0 && iter != fds.end(); iter++) {
             if (iter->revents & (POLLIN | POLLHUP)) {
                 nb_ready++;

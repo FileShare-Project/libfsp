@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 19:01:51 2022 Francois Michaut
-** Last update Tue Aug 22 22:05:44 2023 Francois Michaut
+** Last update Sat Nov 11 23:34:39 2023 Francois Michaut
 **
 ** Server.hpp : Server part used to receive qnd process requests of Clients
 */
@@ -55,6 +55,7 @@ namespace FileShare {
             void set_config(const Config &config);
             static Config default_config();
 
+            const CppSockets::IEndpoint &get_server_endpoint() const;
             const CppSockets::TlsSocket &get_socket() const;
 
              // Call one of theses in a loop in your main program !
