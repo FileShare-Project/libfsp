@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed May 17 08:41:29 2023 Francois Michaut
-** Last update Wed May 17 09:04:05 2023 Francois Michaut
+** Last update Wed Nov 22 20:25:49 2023 Francois Michaut
 **
 ** TestSerialize.cpp : Testing of utilities to serialize numbers
 */
@@ -16,7 +16,7 @@
 
 using namespace FileShare::Utils;
 
-void test_back_forth_serialize() {
+static void test_back_forth_serialize() {
     std::string str;
     std::uint64_t out;
 
@@ -37,7 +37,7 @@ void test_back_forth_serialize() {
     }
 }
 
-void test_back_forth_signed_serialize() {
+static void test_back_forth_signed_serialize() {
     std::string str;
     std::int64_t out;
 

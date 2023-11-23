@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Mon Feb 14 19:35:41 2022 Francois Michaut
-## Last update Wed May 17 08:50:45 2023 Francois Michaut
+## Last update Thu Nov 23 09:06:23 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake building and running tests for FileShare
 ##
@@ -14,23 +14,33 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(CMAKE_CXX_FLAGS_DEBUG_INIT "-O3 -DDEBUG -g3")
+set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O3 -DDEBUG -g3")
+add_compile_definitions(_GNU_SOURCE)
+
 project(LibFileShareProtocol-Tests VERSION 0.1.0 LANGUAGES C CXX)
 
 include(CTest)
 
 create_test_sourcelist(TestFiles test_driver.cpp
+  Config/TestFileMapping.cpp
+
   Protocol/TestVersion.cpp
+
   Utils/TestFileHash.cpp
   Utils/TestSerialize.cpp
   Utils/TestVarInt.cpp
 )
 
 add_executable(unit_tests
+  ../source/Config/FileMapping.cpp
+
   ../source/Protocol/Version.cpp
 
   ../source/Utils/DebugPerf.cpp
   ../source/Utils/FileDescriptor.cpp
   ../source/Utils/FileHash.cpp
+  ../source/Utils/Path.cpp
   ../source/Utils/Serialize.cpp
   ../source/Utils/VarInt.cpp
 

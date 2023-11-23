@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat May  6 16:23:13 2023 Francois Michaut
-** Last update Wed May 17 09:04:13 2023 Francois Michaut
+** Last update Wed Nov 22 20:26:16 2023 Francois Michaut
 **
 ** TestVarInt.cpp : Variable size integer tests
 */
@@ -34,7 +34,7 @@ static std::map<std::size_t, std::string> known_varints_map = {
     {std::numeric_limits<std::size_t>::max(), "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x01"}
 };
 
-void test_varints_7bits() {
+static void test_varints_7bits() {
     VarInt v;
 
     for (int i = 0; i < 0x80; i++) {
@@ -50,7 +50,7 @@ void test_varints_7bits() {
     }
 }
 
-void test_varints_after_8bits() {
+static void test_varints_after_8bits() {
     VarInt v;
 
     for (std::size_t i = 128; i < 0x4000; i++) {
@@ -66,7 +66,7 @@ void test_varints_after_8bits() {
     }
 }
 
-void test_known_varints() {
+static void test_known_varints() {
     VarInt varint;
 
     for (auto const& [number, string] : known_varints_map) {
@@ -78,7 +78,7 @@ void test_known_varints() {
     }
 }
 
-void test_varints_parsing() {
+static void test_varints_parsing() {
     VarInt varint;
     std::string_view output;
 
@@ -101,7 +101,7 @@ void test_varints_parsing() {
     }
 }
 
-void test_varints_ordering() {
+static void test_varints_ordering() {
     std::vector<VarInt> sorted_vector = {0, 128, 200, 256, 831, 1000, 12345, 123456, 184467440737};
     std::vector<VarInt> vector = sorted_vector;
     std::random_device rd;
@@ -116,7 +116,7 @@ void test_varints_ordering() {
     assert(sorted_vector == vector);
 }
 
-void test_back_forth_varints() {
+static void test_back_forth_varints() {
     VarInt v;
     std::string_view out;
     std::string in;

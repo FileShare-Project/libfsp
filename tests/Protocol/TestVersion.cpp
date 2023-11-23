@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat May  6 11:08:04 2023 Francois Michaut
-** Last update Tue May  9 09:02:19 2023 Francois Michaut
+** Last update Wed Nov 22 20:25:28 2023 Francois Michaut
 **
 ** TestProtocolVersion.cpp : ProtocolVersion tests
 */
@@ -20,7 +20,7 @@
 
 using namespace FileShare::Protocol;
 
-void test_spaceship_operator(std::vector<Version> &sorted_vector) {
+static void test_spaceship_operator(std::vector<Version> &sorted_vector) {
     std::random_device rd;
     std::mt19937_64 generator(rd());
 
@@ -35,7 +35,7 @@ void test_spaceship_operator(std::vector<Version> &sorted_vector) {
     assert(sorted_vector == vector);
 }
 
-void test_version_decomposition(std::map<Version, std::array<std::uint8_t, 3>> &versions) {
+static void test_version_decomposition(std::map<Version, std::array<std::uint8_t, 3>> &versions) {
     for (auto const& [key, val] : versions) {
         assert(key.major() == val[0]);
         assert(key.minor() == val[1]);

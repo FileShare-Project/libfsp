@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Oct 13 19:09:01 2022 Francois Michaut
-** Last update Tue May  9 23:39:25 2023 Francois Michaut
+** Last update Thu Nov 23 09:05:00 2023 Francois Michaut
 **
 ** Path.cpp : Implementation of utilities to manpulate paths in a cross plateform way
 */
@@ -40,6 +40,12 @@ namespace FileShare::Utils {
         return res;
     }
 
+    std::filesystem::path home_directoy() {
+        static std::filesystem::path home = home_directoy("");
+
+        return home;
+    }
+
     std::filesystem::path resolve_home_component(const std::filesystem::path &path) {
         using value_type=std::filesystem::path::value_type;
         using string_type=std::filesystem::path::string_type;
@@ -48,7 +54,7 @@ namespace FileShare::Utils {
         if (str.find('~') != 0)
             return path;
         auto pos = str.find('/');
-        auto home = home_directoy(str.substr(1, (pos == std::string::npos ? pos : pos - 1)));
+        auto home = pos == 1 ? home_directoy() : home_directoy(str.substr(1, (pos == std::string::npos ? pos : pos - 1)));
 
         if (home.empty())
             return path;
@@ -65,5 +71,23 @@ namespace FileShare::Utils {
             result.emplace_back(resolve_home_component(path));
         }
         return result;
+    }
+
+    bool path_contains_folder(const std::filesystem::path &path, const std::filesystem::path &folder) {
+        return find_folder_in_path(path, folder) != path.end();
+    }
+
+    std::filesystem::path::iterator find_folder_in_path(const std::filesystem::path &path, const std::filesystem::path &folder) {
+        auto path_iter = path.begin();
+        auto folder_iter = folder.begin();
+
+        while (path_iter != path.end() && folder_iter != folder.end()) {
+            if (*path_iter != *folder_iter) {
+                return path.end();
+            }
+            path_iter++;
+            folder_iter++;
+        }
+        return path_iter;
     }
 }
