@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat May  6 22:13:15 2023 Francois Michaut
-** Last update Mon Jul 17 09:09:42 2023 Francois Michaut
+** Last update Thu Nov 23 22:49:48 2023 Francois Michaut
 **
 ** FileHash.cpp : Function to hash file contents
 */
@@ -43,7 +43,7 @@ namespace FileShare::Utils {
         std::size_t ret = READ_SIZE;
         std::vector<char> buff(READ_SIZE);
 
-#ifdef OS_UNIX
+#if defined(OS_UNIX) && !defined(OS_APPLE)
         posix_fadvise(file.fd(false), 0, 0, POSIX_FADV_SEQUENTIAL); // Ignoring return - this is optional
 #endif
         md = {EVP_MD_fetch(nullptr, algo_to_string(algo), nullptr), EVP_MD_free};
@@ -56,7 +56,12 @@ namespace FileShare::Utils {
             throw std::runtime_error("Failed to init the digest context");
 
         while (ret == READ_SIZE) {
+#if defined (OS_UNIX) && !defined (OS_APPLE)
             ret = fread_unlocked(buff.data(), 1, READ_SIZE, file);
+#else
+            ret = fread(buff.data(), 1, READ_SIZE, file);
+#endif
+
             if (ret == 0)
                 break;
             else if (ret < 0)

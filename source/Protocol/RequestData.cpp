@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Jul 18 22:04:57 2023 Francois Michaut
-** Last update Sun Oct 22 13:16:24 2023 Francois Michaut
+** Last update Tue Nov 28 13:31:55 2023 Francois Michaut
 **
 ** RequestData.cpp : RequestData implementation for the requests payloads
 */
@@ -12,6 +12,8 @@
 #include "FileShare/Protocol/RequestData.hpp"
 #include "FileShare/Utils/Serialize.hpp"
 #include "FileShare/Utils/Time.hpp"
+
+#include <sstream>
 
 static std::string debug_str(FileShare::Protocol::Page page) {
     std::stringstream ss;

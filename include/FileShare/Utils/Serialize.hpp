@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun May 14 21:46:04 2023 Francois Michaut
-** Last update Tue Jul 18 13:35:32 2023 Francois Michaut
+** Last update Tue Nov 28 13:41:33 2023 Francois Michaut
 **
 ** Serialize.hpp : Utilities to serialize numbers
 */
@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <string_view>
+#include <string>
 
 namespace FileShare::Utils {
     std::string serialize(std::int64_t);

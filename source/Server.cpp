@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Tue Nov 14 21:25:07 2023 Francois Michaut
+** Last update Tue Nov 28 13:46:19 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -137,11 +137,15 @@ namespace FileShare {
         int nb_ready = 0;
 
         fds.reserve(nfds);
-        fds.emplace_back(m_socket.get_fd(), POLLIN, 0);
+        fds.emplace_back(pollfd({m_socket.get_fd(), POLLIN, 0}));
         for (auto &iter : m_clients) {
-            fds.emplace_back(iter.first, POLLIN, 0);
+            fds.emplace_back(pollfd({iter.first, POLLIN, 0}));
         }
+#ifdef OS_APPLE
+        nb_ready = poll(fds.data(), nfds, timeout.tv_sec * 1000);
+#else
         nb_ready = ppoll(fds.data(), nfds, &timeout, nullptr);
+#endif
         // if (nb_ready < 0) // TODO: handle signals
         //     throw std::runtime_error("Failed to poll");
         for (auto iter = fds.begin(); nb_ready > 0 && iter != fds.end(); iter++) {

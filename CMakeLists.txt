@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Thu May 26 23:23:59 2022 Francois Michaut
-## Last update Sun Nov 19 13:11:34 2023 Francois Michaut
+## Last update Thu Nov 23 22:56:18 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the FileShareProtocol library
 ##
@@ -66,7 +66,7 @@ add_library(fsp
 
 target_compile_definitions(fsp PRIVATE _LARGEFILE_SOURCE _FILE_OFFSET_BITS=64)
 
-target_link_libraries(fsp cppsockets ssl)
+target_link_libraries(fsp cppsockets)
 
 add_custom_target(test
   COMMAND ${CMAKE_COMMAND} --log-level=WARNING

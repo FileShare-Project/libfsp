@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Oct 23 21:33:10 2023 Francois Michaut
-** Last update Thu Nov  9 12:45:22 2023 Francois Michaut
+** Last update Thu Nov 23 22:54:12 2023 Francois Michaut
 **
 ** Client_private.cpp : Private functions of Client implementation
 */
@@ -196,7 +196,11 @@ namespace FileShare {
             int nb_ready = 0;
 
             fds[0] = {m_socket.get_fd(), POLLIN, 0};
+#ifdef OS_APPLE
+            nb_ready = poll(fds.data(), nfds, -1); // TODO: add timeout
+#else
             nb_ready = ppoll(fds.data(), nfds, nullptr, nullptr); // TODO: add timeout
+#endif
             if (nb_ready < 0) // TODO: handle signals
                 throw std::runtime_error("Failed to poll for status");
             poll_requests();
