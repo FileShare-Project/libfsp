@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 20:50:53 2022 Francois Michaut
-** Last update Thu Nov  9 20:01:37 2023 Francois Michaut
+** Last update Thu Nov 30 08:24:46 2023 Francois Michaut
 **
 ** Client.cpp : Implementation of the FileShareProtocol Client
 */
@@ -85,11 +85,15 @@ namespace FileShare {
             return; // create_download already sends reply to request
         } else if (request.code == Protocol::CommandCode::RECEIVE_FILE) {
             std::shared_ptr<Protocol::ReceiveFileData> data = std::dynamic_pointer_cast<Protocol::ReceiveFileData>(request.request);
-            std::filesystem::path filepath(data->filepath); // TODO: add filepath root translation
+            auto virtual_path = data->filepath;
+            auto host_path = m_config.get_file_mapping().virtual_to_host(virtual_path);
+            auto [handler, status] = prepare_upload(host_path.string(), virtual_path, data->packet_size, data->packet_start);
 
-            // Send reply to original RECEIVE_FILE before SEND_FILE
-            send_reply(request.message_id, Protocol::StatusCode::STATUS_OK);
-            create_upload(filepath, data->packet_size, data->packet_start);
+            // Send reply to original RECEIVE_FILE before we send SEND_FILE
+            send_reply(request.message_id, status);
+            if (status == Protocol::StatusCode::STATUS_OK) {
+                create_upload(std::move(handler.value()));
+            }
             return;
         } else if (request.code == Protocol::CommandCode::DATA_PACKET) {
             auto data = std::dynamic_pointer_cast<Protocol::DataPacketData>(request.request);
@@ -104,8 +108,7 @@ namespace FileShare {
     }
 
     Protocol::Response<void> Client::send_file(std::string filepath, ProgressCallback progress_callback) {
-        // TODO: add filepath root translation
-        auto result = create_upload(filepath);
+        auto result = create_host_upload(filepath);
         Protocol::MessageID message_id = result->first;
         UploadTransferHandler &upload_handler = result->second;
         Protocol::StatusCode status = wait_for_status(message_id);

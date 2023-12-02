@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:23:07 2022 Francois Michaut
-** Last update Sat Oct 28 11:15:11 2023 Francois Michaut
+** Last update Fri Dec  1 20:03:12 2023 Francois Michaut
 **
 ** Client.hpp : Client to communicate with peers with the FileShareProtocol
 */
@@ -82,8 +82,9 @@ namespace FileShare {
             void send_reply(Protocol::MessageID message_id, Protocol::StatusCode status);
             std::uint8_t send_request(Protocol::CommandCode command, std::shared_ptr<Protocol::IRequestData> request_data);
             std::uint8_t send_request(Protocol::Request request);
-            UploadTransferMap::iterator create_upload(std::string filepath, std::size_t packet_size, std::size_t packet_start);
-            UploadTransferMap::iterator create_upload(std::string filepath);
+            std::pair<std::optional<UploadTransferHandler>, Protocol::StatusCode> prepare_upload(std::filesystem::path host_filepath, std::string virtual_filepath, std::size_t packet_size, std::size_t packet_start);
+            UploadTransferMap::iterator create_host_upload(std::filesystem::path host_filepath);
+            UploadTransferMap::iterator create_upload(UploadTransferHandler handler);
             DownloadTransferMap::iterator create_download(Protocol::MessageID message_id, const std::shared_ptr<Protocol::SendFileData> &data);
 
         private:

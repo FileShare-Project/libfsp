@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:29:35 2022 Francois Michaut
-** Last update Thu Nov 16 22:09:16 2023 Francois Michaut
+** Last update Fri Dec  1 19:39:11 2023 Francois Michaut
 **
 ** FileShareConfig.cpp : FileShareConfig implementation
 */
@@ -32,23 +32,14 @@ namespace FileShare {
 #endif
         }
         if (m_downloads_folder.empty()) {
-            m_downloads_folder = FileShare::Utils::resolve_home_component("~/Downloads"); // TODO: replace by cross-plateform way of getting the dowloads folder
+            m_downloads_folder = FileShare::Utils::resolve_home_component("~/Downloads/FileShare"); // TODO: replace by cross-plateform way of getting the dowloads folder
         }
     }
 
     // static Config Config::from_file(std::filesystem::path config_file);
     // Config &Config::to_file(std::filesystem::path config_file);
 
-    // Config &Config::add_private_path(std::filesystem::path path);
-    // Config &Config::add_private_paths(std::vector<std::filesystem::path> paths);
-    // Config &Config::remove_private_path(std::filesystem::path path);
-    // Config &Config::remove_private_paths(std::vector<std::filesystem::path> paths);
-
-    // const std::vector<std::filesystem::path> &Config::get_public_paths() const;
-    // const std::vector<std::filesystem::path> &Config::get_private_paths() const;
     const std::filesystem::path &Config::get_downloads_folder() const { return m_downloads_folder; }
-    // Config &Config::set_public_paths(std::vector<std::filesystem::path> paths);
-    // Config &Config::set_private_paths(std::vector<std::filesystem::path> paths);
     // Config &Config::set_downloads_folder(const std::filesystem::path path);
 
     const std::filesystem::path &Config::get_private_keys_dir() const { return m_private_keys_dir; }
@@ -56,20 +47,12 @@ namespace FileShare {
     // Config &Config::set_private_keys_dir(std::filesystem::path path);
     // Config &Config::set_private_key_name(std::string name);
 
-    // const std::string &Config::get_root_name() const;
-    // Config::TransportMode Config::get_transport_mode() const;
-    // Config &Config::set_root_name(std::string root_name);
-    // Config &Config::set_transport_mode(TransportMode mode);
+    Config &Config::set_file_mapping(FileMapping mapping) { m_filemap = mapping; return *this; }
+    const FileMapping &Config::get_file_mapping() const { return m_filemap; }
+    FileMapping &Config::get_file_mapping() { return m_filemap; }
 
     bool Config::is_server_disabled() const { return m_disable_server; }
     Config &Config::set_server_disabled(bool disabled) { m_disable_server = disabled; return *this; }
-
-    const std::vector<std::filesystem::path> &Config::default_forbidden_paths() {
-        // TODO: find all paths that should be forbidden
-        static std::vector<std::filesystem::path> forbidden_paths = FileShare::Utils::resolve_home_components({"~/.ssh", "~/.fsp", "/etc/passwd", "/root"});
-
-        return forbidden_paths;
-    }
 
     const std::filesystem::path &Config::default_private_keys_dir() {
         static std::filesystem::path private_keys_dir = FileShare::Utils::resolve_home_component("~/.fsp/private");

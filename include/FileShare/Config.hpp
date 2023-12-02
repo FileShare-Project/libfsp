@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:23:57 2022 Francois Michaut
-** Last update Sun Nov 19 11:30:12 2023 Francois Michaut
+** Last update Fri Dec  1 19:39:27 2023 Francois Michaut
 **
 ** Config.hpp : Configuration of the file sharing
 */
@@ -38,16 +38,12 @@ namespace FileShare {
             static Config from_file(std::filesystem::path config_file);
             void to_file(std::filesystem::path config_file);
 
-            // Theses methods silently ignore missing/duplicates
-            Config &add_forbidden_path(std::filesystem::path path);
-            Config &add_forbidden_paths(std::vector<std::filesystem::path> paths);
-            Config &remove_forbidden_path(std::filesystem::path path);
-            Config &remove_forbidden_paths(std::vector<std::filesystem::path> paths);
-
-            [[nodiscard]] const std::vector<std::filesystem::path> &get_forbidden_paths() const;
             [[nodiscard]] const std::filesystem::path &get_downloads_folder() const;
-            Config &set_forbidden_paths(std::vector<std::filesystem::path> paths);
             Config &set_downloads_folder(const std::filesystem::path path);
+
+            Config &set_file_mapping(FileMapping mapping);
+            const FileMapping &get_file_mapping() const;
+            FileMapping &get_file_mapping();
 
             [[nodiscard]] const std::filesystem::path &get_private_keys_dir() const;
             [[nodiscard]] const std::string &get_private_key_name() const;
@@ -65,7 +61,6 @@ namespace FileShare {
             static const std::filesystem::perms secure_file_perms;
             static const std::filesystem::perms secure_folder_perms;
 
-            static const std::vector<std::filesystem::path> &default_forbidden_paths();
             static const std::filesystem::path &default_private_keys_dir();
         private:
             // The protocol works on both TCP and UDP. You can force one or the
@@ -75,17 +70,17 @@ namespace FileShare {
             // List of mapped directories/files that will be available to the
             // remote clients for listing/download if visibility is PUBLIC.
             // It does not restrict what files you can send.
-            FileMapping m_filemap;
-            // List of directory/files that should NEVER be sent to other
-            // clients. Sensitive directories like ~/.ssh should be listed.
+            //
+            // However, firectories/files in the forbidden_paths will NEVER be sent
+            // to other clients. Sensitive directories like ~/.ssh should be listed.
             // It will override any path set in in m_root_nodes and will also
             // apply to files you send.
             // Use this to allow certain directory but exclude sub-directories,
             // and to prevent against sentitives files/folders mistakely
             // added to m_root_nodes or manually sent.
-            std::vector<std::filesystem::path> m_forbidden_paths = Config::default_forbidden_paths();
-            // Default location for downloads. Default to local Downloads folder
-            // if empty string.
+            FileMapping m_filemap;
+            // Default location for downloads. Default to a 'FileShare/' folder
+            // in the local Downloads folder if empty string.
             std::filesystem::path m_downloads_folder = "";
 
             // Folder where the private key/certificate will be stored/created.

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 24 08:51:14 2023 Francois Michaut
-** Last update Thu Oct 26 20:40:06 2023 Francois Michaut
+** Last update Tue Nov 28 23:05:41 2023 Francois Michaut
 **
 ** TransferHandler.hpp : Classes to handle the file transfers
 */
@@ -50,16 +50,12 @@ namespace FileShare {
 
     class UploadTransferHandler : public ITransferHandler {
         public:
-            UploadTransferHandler(std::string filepath, Utils::HashAlgorithm hash_algo, std::size_t packet_size, std::size_t packet_start = 0);
+            UploadTransferHandler(std::string filepath, std::shared_ptr<Protocol::SendFileData> original_request, std::size_t packet_start);
 
-            std::shared_ptr<Protocol::DataPacketData> get_next_packet(std::uint8_t original_request_id);
+            std::shared_ptr<Protocol::DataPacketData> get_next_packet(Protocol::MessageID original_request_id);
 
             bool finished() const override;
         private:
-            std::string m_filepath;
-            Utils::HashAlgorithm m_hash_algo;
-            std::size_t m_packet_size;
-
             std::size_t m_packet_id = 0;
             std::ifstream m_file;
     };
