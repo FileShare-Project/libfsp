@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 24 19:36:36 2023 Francois Michaut
-** Last update Thu Oct 26 20:42:27 2023 Francois Michaut
+** Last update Wed Nov 29 08:49:32 2023 Francois Michaut
 **
 ** TransferHandler.cpp : Implementation of classes to handle the file transfers
 */
@@ -63,6 +63,7 @@ namespace FileShare {
         } else { // data.packet_id == m_expected_id
             bool last_packet;
 
+            // TODO: this breaks with files of size 0
             m_expected_id++; // Increment before comparaison, cause if we need 2 total packets, we will receive ids 0 and 1.
             last_packet = m_expected_id == m_original_request->total_packets;
 
@@ -105,26 +106,15 @@ namespace FileShare {
         return m_original_request;
     }
 
-    UploadTransferHandler::UploadTransferHandler(std::string filepath, Utils::HashAlgorithm hash_algo, std::size_t packet_size, std::size_t packet_start) :
-        m_filepath(filepath), m_hash_algo(hash_algo), m_packet_size(packet_size)
-    {
-        std::string file_hash = Utils::file_hash(Utils::HashAlgorithm::SHA512, filepath);
-        // TODO: check if this causes 2 calls to stat(), if so try to make it only 1
-        std::filesystem::file_time_type file_updated_at = std::filesystem::last_write_time(filepath);
-        std::size_t file_size = std::filesystem::file_size(filepath);
-        std::size_t total_packets = file_size / packet_size + (file_size % packet_size == 0 ? 0 : 1);
-
-        if (packet_start > total_packets) {
-            throw std::runtime_error("Invalid Packet Start");
-        }
-        total_packets -= packet_start;
-        m_original_request = std::make_shared<Protocol::SendFileData>(filepath, Utils::HashAlgorithm::SHA512, file_hash, file_updated_at, packet_size, total_packets);
+    UploadTransferHandler::UploadTransferHandler(std::string filepath, std::shared_ptr<Protocol::SendFileData> original_request, std::size_t packet_start) {
+        m_original_request = std::move(original_request);
         m_file.open(filepath);
+        // TODO: this won't raise on fail to open / fail to seek (need failibt, but failbit would raise if EOF while reading...)
         m_file.exceptions(std::ifstream::badbit); // Enable exceptions on IO operations
-        m_file.seekg(packet_size * packet_start);
+        m_file.seekg(m_original_request->packet_size * packet_start);
     }
 
-    std::shared_ptr<Protocol::DataPacketData> UploadTransferHandler::get_next_packet(std::uint8_t original_request_id) {
+    std::shared_ptr<Protocol::DataPacketData> UploadTransferHandler::get_next_packet(Protocol::MessageID original_request_id) {
         std::vector<char> buffer;
         std::string data;
         std::shared_ptr<Protocol::DataPacketData> data_packet_data;
@@ -132,13 +122,13 @@ namespace FileShare {
         if (finished())
             return nullptr;
 
-        buffer.reserve(m_packet_size);
-        m_file.read(buffer.data(), m_packet_size);
+        buffer.reserve(m_original_request->packet_size);
+        m_file.read(buffer.data(), m_original_request->packet_size);
         data = std::string(buffer.data(), m_file.gcount());
         data_packet_data = std::make_shared<Protocol::DataPacketData>(original_request_id, m_packet_id++, data);
 
         m_transferred_size += data.size();
-        if (data.size() < m_packet_size) {
+        if (data.size() < m_original_request->packet_size) {
             m_file.close();
         }
         return data_packet_data;

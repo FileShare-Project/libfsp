@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Nov 16 22:14:51 2023 Francois Michaut
-** Last update Thu Nov 23 17:54:35 2023 Francois Michaut
+** Last update Fri Dec  1 21:25:31 2023 Francois Michaut
 **
 ** FileMapping.cpp : Config's PathNode implementation
 */
@@ -178,24 +178,24 @@ namespace FileShare {
         }
     }
 
-    FileMapping::FileMapping(std::string root_name) :
-        m_root_node(PathNode::make_virtual_node(std::move(root_name), PathNode::VISIBLE))
+    FileMapping::FileMapping(std::string root_name, FilepathSet forbidden_paths) :
+        m_root_node(PathNode::make_virtual_node(std::move(root_name), PathNode::VISIBLE)), m_forbidden_paths(std::move(forbidden_paths))
     {}
 
-    FileMapping::FileMapping(std::string root_name, PathNode::NodeMap root_nodes) :
-        m_root_node(PathNode::make_virtual_node(std::move(root_name), PathNode::VISIBLE, std::move(root_nodes)))
+    FileMapping::FileMapping(std::string root_name, PathNode::NodeMap root_nodes, FilepathSet forbidden_paths) :
+        m_root_node(PathNode::make_virtual_node(std::move(root_name), PathNode::VISIBLE, std::move(root_nodes))), m_forbidden_paths(std::move(forbidden_paths))
     {}
 
-    FileMapping::FileMapping(std::string root_name, std::vector<PathNode> root_nodes) :
-        m_root_node(PathNode::make_virtual_node(std::move(root_name), PathNode::VISIBLE, std::move(root_nodes)))
+    FileMapping::FileMapping(std::string root_name, std::vector<PathNode> root_nodes, FilepathSet forbidden_paths) :
+        m_root_node(PathNode::make_virtual_node(std::move(root_name), PathNode::VISIBLE, std::move(root_nodes))), m_forbidden_paths(std::move(forbidden_paths))
     {}
 
-    FileMapping::FileMapping(PathNode::NodeMap root_nodes) :
-        m_root_node(PathNode::make_virtual_node(default_root_name, PathNode::VISIBLE, std::move(root_nodes)))
+    FileMapping::FileMapping(PathNode::NodeMap root_nodes, FilepathSet forbidden_paths) :
+        m_root_node(PathNode::make_virtual_node(default_root_name, PathNode::VISIBLE, std::move(root_nodes))), m_forbidden_paths(std::move(forbidden_paths))
     {}
 
-    FileMapping::FileMapping(std::vector<PathNode> root_nodes) :
-        m_root_node(PathNode::make_virtual_node(default_root_name, PathNode::VISIBLE, std::move(root_nodes)))
+    FileMapping::FileMapping(std::vector<PathNode> root_nodes, FilepathSet forbidden_paths) :
+        m_root_node(PathNode::make_virtual_node(default_root_name, PathNode::VISIBLE, std::move(root_nodes))), m_forbidden_paths(std::move(forbidden_paths))
     {}
 
     std::string_view FileMapping::get_root_name() const { return m_root_node.get_name(); }
@@ -210,11 +210,27 @@ namespace FileShare {
     void FileMapping::set_root_nodes(PathNode::NodeMap root_nodes) { m_root_node.set_child_nodes(std::move(root_nodes)); }
     void FileMapping::set_root_nodes(std::vector<PathNode> root_nodes) { m_root_node.set_child_nodes(vector_to_map(std::move(root_nodes))); }
 
+    const FileMapping::FilepathSet &FileMapping::get_forbidden_paths() const { return m_forbidden_paths; }
+    FileMapping::FilepathSet FileMapping::get_forbidden_paths() { return m_forbidden_paths; }
+    void FileMapping::set_forbidden_paths(FileMapping::FilepathSet paths) { m_forbidden_paths = std::move(paths); }
+
+    const FileMapping::FilepathSet &FileMapping::default_forbidden_paths() {
+        // TODO: find all paths that should be forbidden
+        static FilepathSet forbidden_paths = [](){
+            auto vector = FileShare::Utils::resolve_home_components({"~/.ssh", "~/.fsp", "/etc/passwd", "/root"});
+
+            return FilepathSet{vector.begin(), vector.end()};
+        }();
+
+        return forbidden_paths;
+    }
+
     std::filesystem::path FileMapping::host_to_virtual(const std::filesystem::path &path) const {
         std::deque<const PathNode *> stack;
         std::unordered_set<const PathNode *> visited_set;
         const PathNode *current_node = &m_root_node;
 
+        // TODO: make a better algo, way too many branches in this one
         stack.push_back(current_node);
         visited_set.insert(current_node);
         while (current_node) {
@@ -237,7 +253,7 @@ namespace FileShare {
                     }
                 }
                 if (found_new_node) {
-                    continue;
+                    continue; // This is what gives the "depth-first" behavior.
                 }
             } else if (current_node->get_host_path() == path) {
                 return stack_to_path(stack);
@@ -261,10 +277,25 @@ namespace FileShare {
         // This way, peer knows that this file is "temporary" and it cannot request it normally
     }
 
-    // /share/pictures/2023/ -> /home/user/pictures/super-voyage/
-    // /root/passwd
+    std::filesystem::path FileMapping::virtual_to_host(const std::filesystem::path &virtual_path) const {
+        std::filesystem::path::iterator iter;
+        auto node = find_virtual_node(virtual_path, iter);
 
-    std::optional<PathNode> FileMapping::find_virtual_node(std::filesystem::path virtual_path, bool only_visible) const {
+        if (!node.has_value()) {
+            return "";
+        }
+        if (node->get_type() == PathNode::HOST_FOLDER) {
+            std::filesystem::path result = node->get_host_path();
+
+            for (; iter != virtual_path.end(); iter++) {
+                result /= *iter;
+            }
+            return result;
+        }
+        return node->get_host_path(); // Virtual nodes will return ""
+    }
+
+    std::optional<PathNode> FileMapping::find_virtual_node(std::filesystem::path virtual_path, std::filesystem::path::iterator &iter, bool only_visible) const {
         std::string str = trim_node_name(virtual_path.string());
         const PathNode *result = &m_root_node;
         const auto &root_name = m_root_node.get_name();
@@ -273,24 +304,50 @@ namespace FileShare {
         if (str.starts_with(root_name)) {
             virtual_path = str.substr(root_name.size());
         }
-        for (auto iter = virtual_path.begin(); iter != virtual_path.end(); iter++) {
-            if (*iter == "/") // TODO: do this correctly for windows
+        for (iter = virtual_path.begin(); iter != virtual_path.end(); iter++) {
+            if (*iter == "/")
                 continue;
 
             auto &child_nodes = result->get_child_nodes();
             auto node = child_nodes.find(*iter);
+            bool can_see_node = node != child_nodes.end() && (!only_visible || node->second.get_visibility() == PathNode::VISIBLE);
 
-            // TODO: also stop if node == HOST_FOLDER && PUBLIC && starts_with
-            if (node == child_nodes.end() || (only_visible && node->second.get_visibility() == PathNode::HIDDEN)) {
-                return {};
-            } else {
+            if (can_see_node) {
                 result = &node->second;
 
-                if (result->get_type() == PathNode::HOST_FOLDER && (!only_visible || result->get_visibility() == PathNode::VISIBLE)) {
+                if (result->get_type() == PathNode::HOST_FOLDER) {
+                    iter++; // return past the node iterator
                     return *result;
                 }
+            } else {
+                return {};
             }
         }
         return *result;
+    }
+
+    std::optional<PathNode> FileMapping::find_virtual_node(std::filesystem::path virtual_path, bool only_visible) const {
+        std::filesystem::path::iterator iter;
+
+        return FileMapping::find_virtual_node(virtual_path, iter, only_visible);
+    }
+
+    bool FileMapping::is_forbidden(const std::filesystem::path &path) const {
+        if (m_forbidden_paths.contains(path))
+            return true;
+        std::string path_str = path.generic_string();
+
+        for (const auto &iter : m_forbidden_paths) {
+            std::string iter_str = iter.generic_string();
+
+            if (iter_str.ends_with('/')) {
+                iter_str.pop_back();
+            }
+
+            if (path_str.starts_with(iter_str) && (iter_str.size() == path_str.size() || path_str[iter_str.size()] == '/')) {
+                return true;
+            }
+        }
+        return false;
     }
 }

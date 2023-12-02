@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Oct 23 21:33:10 2023 Francois Michaut
-** Last update Thu Nov 23 22:54:12 2023 Francois Michaut
+** Last update Fri Dec  1 21:42:31 2023 Francois Michaut
 **
 ** Client_private.cpp : Private functions of Client implementation
 */
@@ -43,7 +43,6 @@ namespace FileShare {
     }
 
     void Client::authorize_request(Protocol::Request request) {
-        // TODO: implement permission logic with allowed / denied files in the Config
         // TODO: implement retries logic
         switch (request.code) {
             case Protocol::CommandCode::RESPONSE: {
@@ -52,7 +51,7 @@ namespace FileShare {
                 if (m_message_queue.get_outgoing_requests().contains(request.message_id)) {
                     receive_reply(request.message_id, data->status);
                 }
-                break;
+                return;
             }
             case Protocol::CommandCode::DATA_PACKET: {
                 auto data = std::dynamic_pointer_cast<Protocol::DataPacketData>(request.request);
@@ -62,10 +61,10 @@ namespace FileShare {
                 } else {
                     respond_to_request(request, Protocol::StatusCode::INVALID_REQUEST_ID);
                 }
-                break;
+                return;
             }
             case Protocol::CommandCode::SEND_FILE: {
-                // detect this is a send file in reply to a RECEIVE_FILE, and auto-accept
+                // detect this is a send file in reply to a RECEIVE_FILE we sent, and auto-accept
                 auto data = std::dynamic_pointer_cast<Protocol::SendFileData>(request.request);
                 auto outgoing_requests = m_message_queue.get_outgoing_requests();
                 auto original_request = std::find_if(outgoing_requests.begin(), outgoing_requests.end(), [&data](const auto &item) {
@@ -80,16 +79,21 @@ namespace FileShare {
                 if (original_request != outgoing_requests.end()) {
                     m_message_queue.receive_reply(original_request->first, Protocol::StatusCode::STATUS_OK);
                     respond_to_request(request, Protocol::StatusCode::STATUS_OK);
-                    break;
+                    return;
                 }
-                // fallthrough default (manual approval) if no matching requests where found
+                break; // fallthrough default (manual approval) if no matching requests where found
+            }
+            case Protocol::CommandCode::RECEIVE_FILE: {
+                // respond_to_request will handle inexistant / forbidden paths
+                return respond_to_request(request, Protocol::StatusCode::STATUS_OK);
             }
             default:
-                // The request has not be auto-approved or rejected.
-                // It will go through manual approval
-                respond_to_request(request, Protocol::StatusCode::APPROVAL_PENDING);
-                m_request_buffer.emplace_back(std::move(request));
+                break; // Exit the switch but continue with the default APPROVAL_PENDING code.
         }
+        // The request has not be auto-approved or rejected.
+        // It will go through manual approval
+        respond_to_request(request, Protocol::StatusCode::APPROVAL_PENDING);
+        m_request_buffer.emplace_back(std::move(request));
     }
 
     void Client::receive_reply(Protocol::MessageID message_id, Protocol::StatusCode status) {
@@ -147,16 +151,44 @@ namespace FileShare {
         return message_id;
     }
 
-    Client::UploadTransferMap::iterator Client::create_upload(std::string filepath) {
-        constexpr std::size_t packet_size = 4096; // TODO: find a better place for this, duplicated from ProtocolHandler
+    std::pair<std::optional<UploadTransferHandler>, Protocol::StatusCode> Client::prepare_upload(std::filesystem::path host_filepath, std::string virtual_filepath, std::size_t packet_size, std::size_t packet_start) {
+        std::string file_hash = Utils::file_hash(Utils::HashAlgorithm::SHA512, host_filepath);
+        // TODO: check if this causes 2 calls to stat(), if so try to make it only 1
+        std::filesystem::file_time_type file_updated_at = std::filesystem::last_write_time(host_filepath);
+        std::size_t file_size = std::filesystem::file_size(host_filepath);
+        std::size_t total_packets = file_size / packet_size + (file_size % packet_size == 0 ? 0 : 1);
+        std::optional<UploadTransferHandler> handler;
+        // TODO: add FILE_NOT_FOUND errors if file does not exists on filesystem
 
-        return create_upload(std::move(filepath), 4096, 0);
+        if (host_filepath.empty() || m_config.get_file_mapping().is_forbidden(host_filepath)) {
+            return std::make_pair(std::move(handler), Protocol::StatusCode::FILE_NOT_FOUND);
+        }
+        if (packet_start > total_packets) {
+            return std::make_pair(std::move(handler), Protocol::StatusCode::BAD_REQUEST);
+        }
+        total_packets -= packet_start;
+
+        std::shared_ptr<Protocol::SendFileData> send_file_data = std::make_shared<Protocol::SendFileData>(std::move(virtual_filepath), Utils::HashAlgorithm::SHA512, file_hash, file_updated_at, packet_size, total_packets);
+        handler = {std::move(host_filepath), std::move(send_file_data), packet_start};
+        return std::make_pair(std::move(handler), Protocol::StatusCode::STATUS_OK);
     }
 
-    Client::UploadTransferMap::iterator Client::create_upload(std::string filepath, std::size_t packet_size, std::size_t packet_start) {
-        UploadTransferHandler handler(filepath, Utils::HashAlgorithm::SHA512, packet_size);
-        std::shared_ptr<Protocol::SendFileData> send_file_data = handler.get_original_request();
-        Protocol::MessageID message_id = send_request(Protocol::CommandCode::SEND_FILE, send_file_data);
+    Client::UploadTransferMap::iterator Client::create_host_upload(std::filesystem::path host_filepath) {
+        constexpr std::size_t packet_size = 4096; // TODO: find a better place for this, duplicated from ProtocolHandler
+        auto virtual_path = m_config.get_file_mapping().host_to_virtual(host_filepath);
+
+        if (virtual_path.empty())
+            virtual_path = host_filepath.filename();
+        auto result = prepare_upload(host_filepath.string(), virtual_path.string(), 4096, 0);
+
+        if (result.second == Protocol::StatusCode::STATUS_OK) {
+            return create_upload(std::move(result.first.value()));
+        }
+        throw std::runtime_error("Failed to send file '" + host_filepath.string() + "': " + Protocol::status_to_str(result.second));
+    }
+
+    Client::UploadTransferMap::iterator Client::create_upload(UploadTransferHandler handler) {
+        Protocol::MessageID message_id = send_request(Protocol::CommandCode::SEND_FILE, handler.get_original_request());
 
         auto result = m_upload_transfers.emplace(
             std::piecewise_construct,
@@ -167,15 +199,15 @@ namespace FileShare {
     }
 
     Client::DownloadTransferMap::iterator Client::create_download(Protocol::MessageID request_id, const std::shared_ptr<Protocol::SendFileData> &data) {
-        std::filesystem::path filepath(data->filepath); // TODO: add filepath root translation
+        std::filesystem::path filepath(data->filepath);
         auto result = m_download_transfers.end();
 
         try {
             result = m_download_transfers.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(request_id),
-                std::forward_as_tuple(m_config.get_downloads_folder() / m_device_uuid / filepath.filename(), data)
-                ).first;
+                std::forward_as_tuple(m_config.get_downloads_folder() / m_device_uuid / filepath.relative_path(), data)
+            ).first;
             send_reply(request_id, Protocol::StatusCode::STATUS_OK);
         } catch (Errors::Transfer::UpToDateError) {
             send_reply(request_id, Protocol::StatusCode::UP_TO_DATE);

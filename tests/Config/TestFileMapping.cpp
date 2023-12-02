@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Nov 22 20:19:02 2023 Francois Michaut
-** Last update Thu Nov 23 17:57:14 2023 Francois Michaut
+** Last update Mon Nov 27 21:26:38 2023 Francois Michaut
 **
 ** TestFileMapping.cpp : FileMapping classes implementation
 */
@@ -268,10 +268,15 @@ static void test_find_virtual_node() {
     assert(mapping.find_virtual_node("//fsp/root/toto/test2").has_value() == false);
 
     assert(mapping.find_virtual_node("//fsp/tmp") == tmp_node);
+    assert(mapping.find_virtual_node("//fsp/tmp/") == tmp_node);
     assert(mapping.find_virtual_node("//fsp/tmp/yolo/") == tmp_node);
     assert(mapping.find_virtual_node("//fsp/tmp/yolo/foo/bar") == tmp_node);
 
     assert(mapping.find_virtual_node("//fsp/opt").has_value() == false);
     assert(mapping.find_virtual_node("//fsp/opt/yolo/").has_value() == false);
     assert(mapping.find_virtual_node("//fsp/opt/yolo/foo/bar").has_value() == false);
+
+    assert(mapping.find_virtual_node("") == mapping.get_root_node());
+    assert(mapping.find_virtual_node("//fsp") == mapping.get_root_node());
+    assert(mapping.find_virtual_node("//fsp/") == mapping.get_root_node());
 }
