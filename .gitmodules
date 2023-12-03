@@ -1,3 +1,0 @@
-[submodule "lib/libcppsockets"]
-	path = lib/libcppsockets
-	url = git@github.com:FileShare-Project/libcppsockets.git
