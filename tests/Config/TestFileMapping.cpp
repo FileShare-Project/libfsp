@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Nov 22 20:19:02 2023 Francois Michaut
-** Last update Mon Nov 27 21:26:38 2023 Francois Michaut
+** Last update Wed Dec  6 02:46:41 2023 Francois Michaut
 **
 ** TestFileMapping.cpp : FileMapping classes implementation
 */
@@ -119,13 +119,30 @@ static void test_set_name() {
     PathNode node = PathNode::make_virtual_node("test");
 
     assert(node.get_name() == "test");
-    // trims trailing /
-    node.set_name("////test2////");
+    node.set_name("test2");
     assert(node.get_name() == "test2");
 
     try {
         // Crashes if / in middle of name
         node.set_name("test/test2");
+        assert(false);
+    } catch (std::runtime_error &e) {}
+
+    try {
+        // Crashes if / in name
+        node.set_name("/test");
+        assert(false);
+    } catch (std::runtime_error &e) {}
+
+    RootPathNode node2("//test");
+
+    assert(node2.get_name() == "//test");
+    node2.set_name("//test2");
+    assert(node2.get_name() == "//test2");
+
+    try {
+        // Crashes if / in middle of name
+        node2.set_name("test/test2");
         assert(false);
     } catch (std::runtime_error &e) {}
 }
@@ -164,25 +181,25 @@ static void test_host_to_virtual() {
         PathNode::make_host_node("opt", PathNode::HOST_FOLDER, "/opt", PathNode::HIDDEN),
     };
 
-    FileMapping mapping("//fsp", root_nodes);
+    FileMapping mapping({"//fsp", root_nodes});
 
     assert(mapping.host_to_virtual("/non-existent/path").empty());
     assert(mapping.host_to_virtual("/home").empty());
     assert(mapping.host_to_virtual("/home/user1").empty());
-    assert(mapping.host_to_virtual("/home/user1/test") == "/fsp/home/username/test1");
+    assert(mapping.host_to_virtual("/home/user1/test") == "//fsp/home/username/test1");
     assert(mapping.host_to_virtual("/home/user1/test/").empty());
     assert(mapping.host_to_virtual("/home/user2").empty());
     assert(mapping.host_to_virtual("/home/user2/test").empty());
-    assert(mapping.host_to_virtual("/home/us") == "/fsp/home/username/us");
-    assert(mapping.host_to_virtual("/home/us/something/else") == "/fsp/home/username/us/something/else");
-    assert(mapping.host_to_virtual("/home/user/downloads") == "/fsp/home/username/downloads");
-    assert(mapping.host_to_virtual("/home/user/downloads/some/random/path") == "/fsp/home/username/downloads/some/random/path");
+    assert(mapping.host_to_virtual("/home/us") == "//fsp/home/username/us");
+    assert(mapping.host_to_virtual("/home/us/something/else") == "//fsp/home/username/us/something/else");
+    assert(mapping.host_to_virtual("/home/user/downloads") == "//fsp/home/username/downloads");
+    assert(mapping.host_to_virtual("/home/user/downloads/some/random/path") == "//fsp/home/username/downloads/some/random/path");
     assert(mapping.host_to_virtual("/home/user/documents").empty());
     assert(mapping.host_to_virtual("/home/user/documents/some/random/path").empty());
 
     assert(mapping.host_to_virtual("/etc").empty());
     assert(mapping.host_to_virtual("/etc/fake").empty());
-    assert(mapping.host_to_virtual("/etc/fstab") == "/fsp/etc/fstab");
+    assert(mapping.host_to_virtual("/etc/fstab") == "//fsp/etc/fstab");
     assert(mapping.host_to_virtual("/etc/passwd").empty());
 
     assert(mapping.host_to_virtual("/root").empty());
@@ -190,10 +207,10 @@ static void test_host_to_virtual() {
     assert(mapping.host_to_virtual("/root/test2").empty());
     assert(mapping.host_to_virtual("/root/toto/test2").empty());
 
-    assert(mapping.host_to_virtual("/tmp") == "/fsp/tmp");
-    assert(mapping.host_to_virtual("/tmp/") == "/fsp/tmp/");
-    assert(mapping.host_to_virtual("/tmp/yolo/") == "/fsp/tmp/yolo/");
-    assert(mapping.host_to_virtual("/tmp/yolo/foo/bar") == "/fsp/tmp/yolo/foo/bar");
+    assert(mapping.host_to_virtual("/tmp") == "//fsp/tmp");
+    assert(mapping.host_to_virtual("/tmp/") == "//fsp/tmp/");
+    assert(mapping.host_to_virtual("/tmp/yolo/") == "//fsp/tmp/yolo/");
+    assert(mapping.host_to_virtual("/tmp/yolo/foo/bar") == "//fsp/tmp/yolo/foo/bar");
 
     assert(mapping.host_to_virtual("/opt").empty());
     assert(mapping.host_to_virtual("/opt/yolo/").empty());
@@ -277,6 +294,8 @@ static void test_find_virtual_node() {
     assert(mapping.find_virtual_node("//fsp/opt/yolo/foo/bar").has_value() == false);
 
     assert(mapping.find_virtual_node("") == mapping.get_root_node());
+    assert(mapping.find_virtual_node("fsp") == mapping.get_root_node());
+    assert(mapping.find_virtual_node("/fsp") == mapping.get_root_node());
     assert(mapping.find_virtual_node("//fsp") == mapping.get_root_node());
     assert(mapping.find_virtual_node("//fsp/") == mapping.get_root_node());
 }

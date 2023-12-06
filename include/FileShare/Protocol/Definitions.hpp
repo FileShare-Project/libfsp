@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Sat Nov 11 17:31:46 2023 Francois Michaut
+** Last update Thu Dec  7 11:06:44 2023 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */

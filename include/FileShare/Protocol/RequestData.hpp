@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Jul 16 11:25:51 2023 Francois Michaut
-** Last update Fri Aug 25 09:10:36 2023 Francois Michaut
+** Last update Wed Dec  6 05:13:05 2023 Francois Michaut
 **
 ** RequestData.hpp : RequestData interface. Subclasses will represent every request payload
 */
@@ -58,23 +58,23 @@ namespace FileShare::Protocol {
 
     class ListFilesData : public IRequestData {
         public:
-            ListFilesData(std::string folderpath = "", std::size_t page_nb = 0);
+            ListFilesData(std::string folderpath = "");
 
             std::string debug_str() const override;
 
             std::string folderpath;
-            std::size_t page_nb;
     };
 
     class FileListData : public IRequestData {
         public:
             FileListData() = default;
-            FileListData(std::vector<FileInfo> files, Page page);
+            FileListData(std::uint8_t request_id, std::size_t packet_id, std::vector<FileInfo> files = {});
 
             std::string debug_str() const override;
 
+            std::uint8_t request_id;
+            std::size_t packet_id;
             std::vector<FileInfo> files;
-            Page page;
     };
 
     class DataPacketData : public IRequestData {

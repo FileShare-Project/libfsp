@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Oct 23 21:33:10 2023 Francois Michaut
-** Last update Fri Dec  1 21:42:31 2023 Francois Michaut
+** Last update Wed Dec  6 05:40:01 2023 Francois Michaut
 **
 ** Client_private.cpp : Private functions of Client implementation
 */
@@ -77,6 +77,7 @@ namespace FileShare {
                 });
 
                 if (original_request != outgoing_requests.end()) {
+                    // We received a SEND_FILE to our RECEIVE_FILE -> we can mark is as OK since we don't need to keep it anymore
                     m_message_queue.receive_reply(original_request->first, Protocol::StatusCode::STATUS_OK);
                     respond_to_request(request, Protocol::StatusCode::STATUS_OK);
                     return;
@@ -87,6 +88,26 @@ namespace FileShare {
                 // respond_to_request will handle inexistant / forbidden paths
                 return respond_to_request(request, Protocol::StatusCode::STATUS_OK);
             }
+            case Protocol::CommandCode::LIST_FILES: {
+                auto data = std::dynamic_pointer_cast<Protocol::ListFilesData>(request.request);
+                auto &file_mapping = m_config.get_file_mapping();
+                auto node = file_mapping.find_virtual_node(data->folderpath);
+
+                if (!node.has_value() || (node->get_type() != PathNode::VIRTUAL && file_mapping.is_forbidden(node->get_host_path()))) {
+                    return respond_to_request(request, Protocol::StatusCode::FILE_NOT_FOUND);
+                }
+                return respond_to_request(request, Protocol::StatusCode::STATUS_OK);
+            }
+            case Protocol::CommandCode::FILE_LIST: {
+                auto data = std::dynamic_pointer_cast<Protocol::FileListData>(request.request);
+
+                if (m_file_list_transfers.contains(data->request_id)) {
+                    respond_to_request(request, Protocol::StatusCode::STATUS_OK);
+                } else {
+                    respond_to_request(request, Protocol::StatusCode::INVALID_REQUEST_ID);
+                }
+                return;
+             }
             default:
                 break; // Exit the switch but continue with the default APPROVAL_PENDING code.
         }
@@ -109,23 +130,51 @@ namespace FileShare {
             return;
         }
 
-        if (source_request.code == Protocol::CommandCode::DATA_PACKET) {
-            auto packet_data = std::dynamic_pointer_cast<Protocol::DataPacketData>(source_request.request);
-            auto &handler = m_upload_transfers.at(packet_data->request_id);
-            std::shared_ptr<Protocol::DataPacketData> new_packet = handler.get_next_packet(packet_data->request_id);
+        switch (source_request.code) {
+            case Protocol::CommandCode::DATA_PACKET: {
+                auto packet_data = std::dynamic_pointer_cast<Protocol::DataPacketData>(source_request.request);
+                auto &handler = m_upload_transfers.at(packet_data->request_id);
+                std::shared_ptr<Protocol::DataPacketData> new_packet = handler.get_next_packet(packet_data->request_id);
 
-            if (new_packet) {
-                send_request(Protocol::CommandCode::DATA_PACKET, new_packet);
+                if (new_packet) {
+                    send_request(Protocol::CommandCode::DATA_PACKET, new_packet);
+                } else {
+                    m_upload_transfers.erase(packet_data->request_id);
+                }
+                break;
             }
-        } else if (source_request.code == Protocol::CommandCode::SEND_FILE) {
-            auto &handler = m_upload_transfers.at(message_id);
+            case Protocol::CommandCode::SEND_FILE: {
+                auto &handler = m_upload_transfers.at(message_id);
 
-            // TODO: do not rely on that hardcoded 5
-            for (int i = 0; i < 5 && !handler.finished() && m_message_queue.available_send_slots() > 0; i++) {
-                std::shared_ptr<Protocol::DataPacketData> new_packet = handler.get_next_packet(message_id);
+                // TODO: do not rely on that hardcoded 5
+                for (int i = 0; i < 5 && !handler.finished() && m_message_queue.available_send_slots() > 0; i++) {
+                    std::shared_ptr<Protocol::DataPacketData> new_packet = handler.get_next_packet(message_id);
 
-                send_request(Protocol::CommandCode::DATA_PACKET, new_packet);
+                    send_request(Protocol::CommandCode::DATA_PACKET, new_packet);
+                }
+                if (handler.finished()) {
+                    m_upload_transfers.erase(message_id);
+                }
+                break;
             }
+            case Protocol::CommandCode::LIST_FILES: {
+                m_file_list_transfers.try_emplace(message_id);
+                break;
+            }
+            case Protocol::CommandCode::FILE_LIST: {
+                auto data = std::dynamic_pointer_cast<Protocol::FileListData>(source_request.request);
+                auto &handler = m_list_files_transfers.at(data->request_id);
+                auto new_packet = handler.get_next_packet(data->request_id);
+
+                if (new_packet) {
+                    send_request(Protocol::CommandCode::FILE_LIST, new_packet);
+                } else {
+                    m_upload_transfers.erase(message_id);
+                }
+                break;
+            }
+            default:
+                break;
         }
     }
 
@@ -152,17 +201,19 @@ namespace FileShare {
     }
 
     std::pair<std::optional<UploadTransferHandler>, Protocol::StatusCode> Client::prepare_upload(std::filesystem::path host_filepath, std::string virtual_filepath, std::size_t packet_size, std::size_t packet_start) {
-        std::string file_hash = Utils::file_hash(Utils::HashAlgorithm::SHA512, host_filepath);
-        // TODO: check if this causes 2 calls to stat(), if so try to make it only 1
-        std::filesystem::file_time_type file_updated_at = std::filesystem::last_write_time(host_filepath);
-        std::size_t file_size = std::filesystem::file_size(host_filepath);
-        std::size_t total_packets = file_size / packet_size + (file_size % packet_size == 0 ? 0 : 1);
         std::optional<UploadTransferHandler> handler;
-        // TODO: add FILE_NOT_FOUND errors if file does not exists on filesystem
 
         if (host_filepath.empty() || m_config.get_file_mapping().is_forbidden(host_filepath)) {
             return std::make_pair(std::move(handler), Protocol::StatusCode::FILE_NOT_FOUND);
         }
+
+        std::string file_hash = Utils::file_hash(Utils::HashAlgorithm::SHA512, host_filepath);
+        std::filesystem::directory_entry entry(host_filepath);
+        std::filesystem::file_time_type file_updated_at = entry.last_write_time();
+        std::size_t file_size = entry.file_size();
+        std::size_t total_packets = file_size / packet_size + (file_size % packet_size == 0 ? 0 : 1);
+        // TODO: add FILE_NOT_FOUND errors if file does not exists on filesystem
+
         if (packet_start > total_packets) {
             return std::make_pair(std::move(handler), Protocol::StatusCode::BAD_REQUEST);
         }
@@ -179,7 +230,7 @@ namespace FileShare {
 
         if (virtual_path.empty())
             virtual_path = host_filepath.filename();
-        auto result = prepare_upload(host_filepath.string(), virtual_path.string(), 4096, 0);
+        auto result = prepare_upload(host_filepath.string(), virtual_path.string(), packet_size, 0);
 
         if (result.second == Protocol::StatusCode::STATUS_OK) {
             return create_upload(std::move(result.first.value()));
@@ -222,7 +273,7 @@ namespace FileShare {
         // TODO HACK: this is not good as we could wait forever if peer is
         // trying to DDOS us by not sending a response ever.
         // Implement async model instead
-        while (!message.status.has_value() || message.status.value() == Protocol::StatusCode::APPROVAL_PENDING) {
+        while ((!message.status.has_value() || message.status.value() == Protocol::StatusCode::APPROVAL_PENDING) && m_socket.connected()) {
             std::array<struct pollfd, 1> fds;
             nfds_t nfds = 1;
             int nb_ready = 0;

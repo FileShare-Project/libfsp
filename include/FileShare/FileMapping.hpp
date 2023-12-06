@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov 19 11:23:07 2023 Francois Michaut
-** Last update Fri Dec  1 20:02:19 2023 Francois Michaut
+** Last update Wed Dec  6 02:24:38 2023 Francois Michaut
 **
 ** FileMapping.hpp : Class to hold information about which files are available for listing/download
 */
@@ -46,6 +46,11 @@ namespace FileShare {
             [[nodiscard]] Type get_type() const;
             PathNode &set_type(Type type);
 
+            bool is_virtual() const;
+            bool is_host() const;
+            bool is_host_file() const;
+            bool is_host_folder() const;
+
             [[nodiscard]] Visibility get_visibility() const;
             PathNode &set_visibility(Visibility visibility);
 
@@ -64,7 +69,7 @@ namespace FileShare {
         private:
             static void assert_virtual_type(Type type);
             static void assert_not_virtual_type(Type type);
-            static void assert_valid_name(std::string_view name);
+            virtual void assert_valid_name(std::string_view name);
 
         private:
             std::string m_name; // no `/` allowed in the stem
@@ -74,24 +79,31 @@ namespace FileShare {
             std::filesystem::path m_host_path; // Only if type != VIRTUAL
     };
 
+    class RootPathNode : public PathNode {
+        public:
+            RootPathNode(std::string root_name = default_root_name, PathNode::NodeMap root_nodes = {});
+            RootPathNode(std::string root_name, std::vector<PathNode> root_nodes);
+            RootPathNode(PathNode::NodeMap root_nodes);
+            RootPathNode(std::vector<PathNode> root_nodes);
+
+            static constexpr const char *default_root_name = "//fsp";
+        private:
+            void assert_valid_name(std::string_view name) override;
+    };
+
     class FileMapping {
         public:
             using FilepathSet=std::unordered_set<std::filesystem::path>;
 
-            FileMapping(PathNode root_node, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());
-            FileMapping(std::string root_name = default_root_name, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());
-            FileMapping(std::string root_name, PathNode::NodeMap root_nodes, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());
-            FileMapping(std::string root_name, std::vector<PathNode> root_nodes, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());
-            FileMapping(PathNode::NodeMap root_nodes, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());
-            FileMapping(std::vector<PathNode> root_nodes, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());
+            FileMapping(RootPathNode root_node = {}, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());
 
             [[nodiscard]] std::string_view get_root_name() const;
             void set_root_name(std::string root_name);
 
             // TODO: make sure we can't change root node visibility or type
-            [[nodiscard]] const PathNode &get_root_node() const;
-            [[nodiscard]] PathNode &get_root_node();
-            void set_root_node(PathNode root_node);
+            [[nodiscard]] const RootPathNode &get_root_node() const;
+            [[nodiscard]] RootPathNode &get_root_node();
+            void set_root_node(RootPathNode root_node);
 
             [[nodiscard]] const PathNode::NodeMap &get_root_nodes() const;
             [[nodiscard]] PathNode::NodeMap &get_root_nodes();
@@ -104,17 +116,16 @@ namespace FileShare {
 
             std::filesystem::path host_to_virtual(const std::filesystem::path &path) const;
             std::filesystem::path virtual_to_host(const std::filesystem::path &path) const;
+            std::filesystem::path virtual_to_host(const std::filesystem::path &virtual_path, const std::optional<PathNode> &node, std::filesystem::path::iterator iter) const;
             std::optional<PathNode> find_virtual_node(std::filesystem::path virtual_path, std::filesystem::path::iterator &out, bool only_visible = true) const;
             std::optional<PathNode> find_virtual_node(std::filesystem::path virtual_path, bool only_visible = true) const;
 
             bool is_forbidden(const std::filesystem::path &path) const;
-
-            static constexpr const char *default_root_name = "//fsp";
         private:
             static const FilepathSet &default_forbidden_paths();
 
         private:
-            PathNode m_root_node;
+            RootPathNode m_root_node;
             FilepathSet m_forbidden_paths = FileMapping::default_forbidden_paths();
     };
 }

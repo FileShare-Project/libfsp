@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Jul 18 22:04:57 2023 Francois Michaut
-** Last update Tue Nov 28 13:31:55 2023 Francois Michaut
+** Last update Wed Dec  6 05:24:16 2023 Francois Michaut
 **
 ** RequestData.cpp : RequestData implementation for the requests payloads
 */
@@ -38,12 +38,12 @@ namespace FileShare::Protocol {
         filepath(filepath), packet_size(packet_size), packet_start(packet_start)
     {}
 
-    ListFilesData::ListFilesData(std::string folderpath, std::size_t page_nb) :
-        folderpath(folderpath), page_nb(page_nb)
+    ListFilesData::ListFilesData(std::string folderpath) :
+        folderpath(folderpath)
     {}
 
-    FileListData::FileListData(std::vector<FileInfo> files, Page page) :
-        files(files), page(page)
+    FileListData::FileListData(std::uint8_t request_id, std::size_t packet_id, std::vector<FileInfo> files) :
+        request_id(request_id), files(files), packet_id(packet_id)
     {}
 
     DataPacketData::DataPacketData(std::uint8_t request_id, std::size_t packet_id, std::string data) :
@@ -85,7 +85,8 @@ namespace FileShare::Protocol {
         std::stringstream ss;
 
         ss << "FileListData{"
-           << "page = " << ::debug_str(page)
+           << "request_id = " << (int)request_id
+           << ", packet_id = " << packet_id
            << ", files (count = " << files.size() << ") = [";
         for (const auto &file : files) {
             ss << "{ path = " << file.path << ", file_type = " << (int)file.file_type << " }, ";
@@ -99,7 +100,6 @@ namespace FileShare::Protocol {
 
         ss << "ListFilesData{"
            << "folderpath = " << folderpath
-           << ", page_nb = " << page_nb
            << "}";
         return ss.str();
     }

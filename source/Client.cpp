@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 20:50:53 2022 Francois Michaut
-** Last update Thu Nov 30 08:24:46 2023 Francois Michaut
+** Last update Wed Dec  6 11:02:26 2023 Francois Michaut
 **
 ** Client.cpp : Implementation of the FileShareProtocol Client
 */
@@ -78,27 +78,55 @@ namespace FileShare {
             return;
         }
 
-        if (request.code == Protocol::CommandCode::SEND_FILE) {
-            std::shared_ptr<Protocol::SendFileData> data = std::dynamic_pointer_cast<Protocol::SendFileData>(request.request);
+        switch (request.code) {
+            case Protocol::CommandCode::DATA_PACKET: {
+                auto data = std::dynamic_pointer_cast<Protocol::DataPacketData>(request.request);
+                auto &handler = m_download_transfers.at(data->request_id);
 
-            create_download(request.message_id, data);
-            return; // create_download already sends reply to request
-        } else if (request.code == Protocol::CommandCode::RECEIVE_FILE) {
-            std::shared_ptr<Protocol::ReceiveFileData> data = std::dynamic_pointer_cast<Protocol::ReceiveFileData>(request.request);
-            auto virtual_path = data->filepath;
-            auto host_path = m_config.get_file_mapping().virtual_to_host(virtual_path);
-            auto [handler, status] = prepare_upload(host_path.string(), virtual_path, data->packet_size, data->packet_start);
-
-            // Send reply to original RECEIVE_FILE before we send SEND_FILE
-            send_reply(request.message_id, status);
-            if (status == Protocol::StatusCode::STATUS_OK) {
-                create_upload(std::move(handler.value()));
+                handler.receive_packet(*data);
+                if (handler.finished()) {
+                    m_download_transfers.erase(data->request_id);
+                }
             }
-            return;
-        } else if (request.code == Protocol::CommandCode::DATA_PACKET) {
-            auto data = std::dynamic_pointer_cast<Protocol::DataPacketData>(request.request);
+            case Protocol::CommandCode::SEND_FILE: {
+                std::shared_ptr<Protocol::SendFileData> data = std::dynamic_pointer_cast<Protocol::SendFileData>(request.request);
 
-            m_download_transfers.at(data->request_id).receive_packet(*data);
+                create_download(request.message_id, data);
+                return; // create_download already sends reply to request
+
+            }
+            case Protocol::CommandCode::RECEIVE_FILE: {
+                std::shared_ptr<Protocol::ReceiveFileData> data = std::dynamic_pointer_cast<Protocol::ReceiveFileData>(request.request);
+                auto virtual_path = data->filepath;
+                auto host_path = m_config.get_file_mapping().virtual_to_host(virtual_path);
+                auto [handler, status] = prepare_upload(host_path.string(), virtual_path, data->packet_size, data->packet_start);
+
+                // Send reply to original RECEIVE_FILE before we send SEND_FILE
+                send_reply(request.message_id, status);
+                if (status == Protocol::StatusCode::STATUS_OK) {
+                    create_upload(std::move(handler.value()));
+                }
+                return;
+            }
+            case Protocol::CommandCode::LIST_FILES: {
+                auto data = std::dynamic_pointer_cast<Protocol::ListFilesData>(request.request);
+                constexpr std::size_t packet_size = 4096; // TODO: find a better place for this, duplicated from ProtocolHandler
+                ListFilesTransferHandler handler(data->folderpath, m_config.get_file_mapping(), packet_size);
+
+                auto result = m_list_files_transfers.emplace(std::piecewise_construct, std::forward_as_tuple(request.message_id), std::forward_as_tuple(std::move(handler)));
+
+                send_reply(request.message_id, Protocol::StatusCode::STATUS_OK);
+                send_request(Protocol::CommandCode::FILE_LIST, result.first->second.get_next_packet(request.message_id));
+                return;
+            }
+            case Protocol::CommandCode::FILE_LIST: {
+                auto data = std::dynamic_pointer_cast<Protocol::FileListData>(request.request);
+                auto &handler = m_file_list_transfers.at(data->request_id);
+
+                handler.receive_packet(*data);
+            }
+            default:
+                break;
         }
         send_reply(request.message_id, Protocol::StatusCode::STATUS_OK);
     }
@@ -156,7 +184,7 @@ namespace FileShare {
             return filepath == original_data->filepath;
         });
         if (request == incomming_requests.end() || !m_download_transfers.contains(request->first)) {
-            return {status};
+            throw std::runtime_error("Failed to locate download transfer"); // TODO: we got STATUS_OK but no incomming request ? Something is wrong
         }
         auto &transfer_handler = m_download_transfers.at(request->first);
 
@@ -168,12 +196,30 @@ namespace FileShare {
         return {status}; // TODO
     }
 
-    Protocol::Response<Protocol::FileList> Client::list_files(std::string folderpath, std::size_t page_nb) {
-        std::shared_ptr<Protocol::ListFilesData> list_files_data = std::make_shared<Protocol::ListFilesData>(folderpath, page_nb);
+    Protocol::Response<std::vector<Protocol::FileInfo>> Client::list_files(std::string folderpath) {
+        std::shared_ptr<Protocol::ListFilesData> list_files_data = std::make_shared<Protocol::ListFilesData>(folderpath);
         Protocol::MessageID message_id = send_request(Protocol::CommandCode::LIST_FILES, list_files_data);
+        Protocol::StatusCode status = wait_for_status(message_id);
 
-        (void)message_id;
-        // TODO: get response
-        return {};
+        if (status != Protocol::StatusCode::STATUS_OK) {
+            return {status, {}};
+        }
+        auto iter = m_file_list_transfers.find(message_id);
+
+        if (iter == m_file_list_transfers.end()) {
+            std::runtime_error("Failed to locate list file transfer"); // TODO: we got STATUS_OK but no transfer? something is wrong.
+        }
+        auto &handler = iter->second;
+
+        while (!handler.finished()) {
+            poll_requests(); // TODO: currently blocking, but if it changes, needs to add a poll() call to avoid spamming loop
+        }
+
+        auto file_list = std::make_shared<std::vector<Protocol::FileInfo>>(handler.get_file_list());
+
+        m_file_list_transfers.erase(message_id);
+        return {status, file_list};
     }
 }
+
+// TODO: there are many places where client will loop forever if socket is not connected, fix it.
