@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Tue Nov 28 13:46:19 2023 Francois Michaut
+** Last update Wed Dec  6 06:27:53 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -153,7 +153,7 @@ namespace FileShare {
                 nb_ready++;
                 if (iter->fd == m_socket.get_fd()) {
                     auto tls_socket =  m_socket.accept();
-                    std::shared_ptr<Client> client = std::make_shared<Client>(std::move(*tls_socket), "TODO", "TODO", Protocol::Version::v0_0_0);
+                    std::shared_ptr<Client> client = std::make_shared<Client>(std::move(*tls_socket), "TODO", "TODO", Protocol::Version::v0_0_0, m_config);
                     std::optional<Protocol::Request> req = {};
 
                     m_events.emplace_back(std::move(client), req);

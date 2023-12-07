@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 24 19:36:36 2023 Francois Michaut
-** Last update Wed Nov 29 08:49:32 2023 Francois Michaut
+** Last update Thu Dec  7 11:09:56 2023 Francois Michaut
 **
 ** TransferHandler.cpp : Implementation of classes to handle the file transfers
 */
@@ -91,18 +91,18 @@ namespace FileShare {
         return !m_file.is_open();
     }
 
-    std::size_t ITransferHandler::get_current_size() const {
+    std::size_t IFileTransferHandler::get_current_size() const {
         // TODO: this is not exact : last packet might have a smaller size
         // return m_expected_id * m_original_request->packet_size;
         return m_transferred_size;
     }
 
-    std::size_t ITransferHandler::get_total_size() const {
+    std::size_t IFileTransferHandler::get_total_size() const {
         // TODO: this is not exact : last packet might have a smaller size
         return m_original_request->total_packets * m_original_request->packet_size;
     }
 
-    std::shared_ptr<Protocol::SendFileData> ITransferHandler::get_original_request() const {
+    std::shared_ptr<Protocol::SendFileData> IFileTransferHandler::get_original_request() const {
         return m_original_request;
     }
 
@@ -137,4 +137,122 @@ namespace FileShare {
     bool UploadTransferHandler::finished() const {
         return !m_file.is_open();
     }
+
+    ListFilesTransferHandler::ListFilesTransferHandler(std::filesystem::path requested_path, FileMapping &file_mapping, std::size_t packet_size) :
+        m_requested_path(std::move(requested_path)), m_file_mapping(file_mapping), m_packet_size(packet_size)
+    {
+        std::filesystem::path::iterator out;
+
+        if (m_requested_path.empty())
+            m_requested_path = std::filesystem::path("//") / m_file_mapping.get_root_name();
+        m_path_node = file_mapping.find_virtual_node(m_requested_path, out);
+        if (!m_path_node.has_value()) {
+            return;
+        }
+        if (m_path_node->is_host_folder()) {
+            std::filesystem::path host_path = m_file_mapping.virtual_to_host(m_requested_path, m_path_node, out);
+
+            if (!host_path.empty()) {
+                m_directory_iterator = std::filesystem::directory_iterator(host_path);
+            }
+        } else if (m_path_node->is_virtual()) {
+            m_node_iterator = m_path_node->get_child_nodes().begin();
+        }
+    }
+
+    std::shared_ptr<Protocol::FileListData> ListFilesTransferHandler::get_next_packet(Protocol::MessageID original_request_id) {
+        if (m_extra_packet_sent || !m_path_node.has_value()) {
+            return nullptr;
+        }
+
+        std::vector<Protocol::FileInfo> vector;
+        const std::size_t max_count = 255; // TODO: determine that dynamically from packet_size
+
+        switch (m_path_node->get_type()) {
+            case PathNode::HOST_FOLDER: {
+                const auto end = std::filesystem::directory_iterator();
+
+                for (int i = 0; m_directory_iterator != end && i < max_count; i++) {
+                    auto filepath = m_requested_path / m_directory_iterator->path().filename();
+                    auto file_type = m_directory_iterator->is_directory() ? Protocol::FileType::DIRECTORY : Protocol::FileType::FILE;
+
+                    vector.emplace_back(Protocol::FileInfo{filepath, file_type});
+                    m_directory_iterator++;
+                }
+                break;
+            }
+            case PathNode::HOST_FILE: {
+                if (m_current_id != 0) {
+                    break; // Send this only once
+                }
+                std::filesystem::directory_entry entry(m_path_node->get_host_path());
+
+                if (entry.is_directory()) {
+                    break; // It's supposed to be a file, abort
+                }
+                vector.emplace_back(Protocol::FileInfo{m_requested_path, Protocol::FileType::FILE});
+                break;
+            }
+            case PathNode::VIRTUAL: {
+                const auto &nodes = m_path_node->get_child_nodes();
+
+                for (int i = 0; i < max_count && m_node_iterator != nodes.end(); i++) {
+                    const PathNode &node = m_node_iterator->second;
+                    auto file_type = node.is_host_file() ? Protocol::FileType::FILE : Protocol::FileType::DIRECTORY;
+
+                    vector.emplace_back(Protocol::FileInfo{m_requested_path / node.get_name(), file_type});
+                    m_node_iterator++;
+                }
+                break;
+            }
+        }
+        auto request = std::make_shared<Protocol::FileListData>(original_request_id, m_current_id++, std::move(vector));
+
+        if (request->files.empty()) {
+            m_extra_packet_sent = true;
+        }
+        return request;
+    }
+
+    bool ListFilesTransferHandler::finished() const {
+        if (!m_path_node.has_value())
+            return true;
+        switch (m_path_node->get_type()) {
+            case PathNode::HOST_FOLDER:
+                return m_directory_iterator == std::filesystem::directory_iterator();
+            case PathNode::HOST_FILE:
+                return m_current_id == 1;
+            case PathNode::VIRTUAL:
+                return m_node_iterator == m_path_node->get_child_nodes().end();
+        }
+    }
+
+    void FileListTransferHandler::receive_packet(Protocol::FileListData data) {
+        if (data.packet_id > m_current_id) {
+            while (m_current_id < data.packet_id) {
+                m_missing_ids.push_back(m_current_id++);
+            }
+        } else if (data.packet_id < m_current_id) {
+            auto iter = std::find(m_missing_ids.begin(), m_missing_ids.end(), data.packet_id);
+
+            if (iter != m_missing_ids.end()) {
+                m_missing_ids.erase(iter);
+            } else {
+                return; // Don't receive twice the same packet
+            }
+        } else {
+            m_current_id++;
+        }
+        if (data.files.empty()) {
+            m_finished = true;
+        } else {
+            m_file_list.insert(m_file_list.end(), std::make_move_iterator(data.files.begin()), std::make_move_iterator(data.files.end()));
+        }
+    }
+
+    bool FileListTransferHandler::finished() const {
+        return m_missing_ids.empty() && m_finished;
+    }
+
+    [[nodiscard]] const std::vector<Protocol::FileInfo> &FileListTransferHandler::get_file_list() const { return m_file_list; }
 }

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:23:07 2022 Francois Michaut
-** Last update Fri Dec  1 20:03:12 2023 Francois Michaut
+** Last update Mon Dec  4 21:55:25 2023 Francois Michaut
 **
 ** Client.hpp : Client to communicate with peers with the FileShareProtocol
 */
@@ -39,13 +39,12 @@ namespace FileShare {
             // Blocking functions
             Protocol::Response<void> send_file(std::string filepath, ProgressCallback progress_callback = [](const std::string &filepath, std::size_t current_size, std::size_t total_size){});
             Protocol::Response<void> receive_file(std::string filepath, ProgressCallback progress_callback = [](const std::string &filepath, std::size_t current_size, std::size_t total_size){});
-            Protocol::Response<Protocol::FileList> list_files(std::string folderpath = "", std::size_t page_nb = 0);
+            Protocol::Response<std::vector<Protocol::FileInfo>> list_files(std::string folderpath = "");
+            // TODO: Async non-blocking Functions
 
             // TODO determine params
             Protocol::Response<void> initiate_pairing();
             Protocol::Response<void> accept_pairing();
-
-            // TODO: Async non-blocking Functions
 
             [[nodiscard]]
             const CppSockets::TlsSocket &get_socket() const;
@@ -71,6 +70,8 @@ namespace FileShare {
             static Config default_config();
             using UploadTransferMap = std::unordered_map<Protocol::MessageID, UploadTransferHandler>;
             using DownloadTransferMap = std::unordered_map<Protocol::MessageID, DownloadTransferHandler>;
+            using ListFilesTransferMap = std::unordered_map<Protocol::MessageID, ListFilesTransferHandler>;
+            using FileListTransferMap = std::unordered_map<Protocol::MessageID, FileListTransferHandler>;
 
         private:
             Protocol::StatusCode wait_for_status(Protocol::MessageID message_id);
@@ -96,8 +97,11 @@ namespace FileShare {
 
             std::string m_buffer;
             std::vector<Protocol::Request> m_request_buffer;
+            MessageQueue m_message_queue;
+
             DownloadTransferMap m_download_transfers;
             UploadTransferMap m_upload_transfers;
-            MessageQueue m_message_queue;
+            ListFilesTransferMap m_list_files_transfers;
+            FileListTransferMap m_file_list_transfers;
     };
 }

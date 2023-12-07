@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri May  5 21:35:06 2023 Francois Michaut
-** Last update Sat Aug 26 18:30:45 2023 Francois Michaut
+** Last update Mon Dec  4 19:18:12 2023 Francois Michaut
 **
 ** ProtocolHandler.cpp : ProtocolHandler for the v0.0.0 of the protocol
 */
@@ -17,6 +17,8 @@
 #include "FileShare/Utils/VarInt.hpp"
 
 #include <chrono>
+
+// TODO: enfore 8bytes limits on VARINTs
 
 namespace FileShare::Protocol::Handler::v0_0_0 {
     std::string ProtocolHandler::format_request(const Request &request) {
@@ -270,17 +272,15 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
     // |       4       | |        1        | |       1      | |     MAX(8)     |
     // |    STRING     | |       ENUM      | |       -      | |     VARINT     |
     // -------------------------------------------------------------------------
-    // |FOLDERPATH_SIZE| |   FOLDERPATH    | |    PAGE_NB   |
-    // |       -       | | FOLDERPATH_SIZE | |       -      |
-    // |    VARINT     | |     STRING      | |     VARINT   |
-    // ------------------------------------------------------
+    // |FOLDERPATH_SIZE| |   FOLDERPATH    |
+    // |       -       | | FOLDERPATH_SIZE |
+    // |    VARINT     | |     STRING      |
+    // -------------------------------------
     std::string ProtocolHandler::format_list_files(std::uint8_t message_id, const ListFilesData &data) {
         std::string result;
         Utils::VarInt folderpath_size = data.folderpath.size();
-        Utils::VarInt v_page_idx = data.page_nb;
 
-        Utils::VarInt payload_size = folderpath_size.byte_size() + folderpath_size.to_number() +
-            v_page_idx.byte_size();
+        Utils::VarInt payload_size = folderpath_size.byte_size() + folderpath_size.to_number();
         result.reserve(4 + 1 + 1 + payload_size.byte_size() + payload_size.to_number());
         result += magic_bytes;
         result += (char)CommandCode::LIST_FILES;
@@ -288,7 +288,6 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         result += payload_size.to_string();
         result += folderpath_size.to_string();
         result += data.folderpath;
-        result += v_page_idx.to_string();
         return result;
     }
 
@@ -301,21 +300,17 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         if (payload.size() < varint.to_number())
             throw std::runtime_error("BAD_REQUEST");
         data.folderpath = payload.substr(0, varint.to_number());
-        payload = payload.substr(varint.to_number());
-        if (!varint.parse(payload, payload))
-            throw std::runtime_error("BAD_REQUEST");
-        data.page_nb = varint.to_number();
         return std::make_shared<ListFilesData>(data);
     }
 
-    // -------------------------------------------------------------------
-    // |MAGIC_BYTES| |   COMMAND_CODE  | |  MESSAGE_ID  | | PAYLOAD_SIZE |
-    // |     4     | |        1        | |       1      | |    MAX(8)    |
-    // |   STRING  | |       ENUM      | |      -       | |    VARINT    |
-    // -------------------------------------------------------------------
-    // |TOTAL_PAGES| |   PAGE_INDEX    | |  ITEM_COUNT  |
-    // |     -     | |        -        | |       -      |
-    // |  VARINT   | |      VARINT     | |    VARINT    |
+    // ------------------------------------------------------------------
+    // |MAGIC_BYTES| |  COMMAND_CODE  | |  MESSAGE_ID  | | PAYLOAD_SIZE |
+    // |     4     | |       1        | |      1       | |    MAX(8)    |
+    // |   STRING  | |      ENUM      | |      -       | |    VARINT    |
+    // ------------------------------------------------------------------
+    // | REQUEST_ID| |   PACKET_ID    | |  ITEM_COUNT  |
+    // |     1     | |       -        | |      -       |
+    // |     -     | |     VARINT     | |    VARINT    |
     // ---------------------------------------------------------
     // |    ARRAY    [FILEPATH_SIZE,   FILEPATH   , FILE_TYPE] |
     // |  ITEM_COUNT [      -      ,    STRING    ,     1    ] |
@@ -325,8 +320,7 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         std::string result;
         std::size_t array_total_size = 0;
         Utils::VarInt item_count = data.files.size();
-        Utils::VarInt v_page_idx = data.page.current;
-        Utils::VarInt v_total_pages = data.page.total;
+        Utils::VarInt v_packet_id = data.packet_id;
         Utils::VarInt payload_size = 0;
 
         for (const auto &file : data.files) {
@@ -334,15 +328,15 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
 
             array_total_size += v.byte_size() + v.to_number() + 1;
         }
-        payload_size = v_total_pages.byte_size() + v_page_idx.byte_size() + item_count.byte_size() + array_total_size;
+        payload_size = 1 + v_packet_id.byte_size() + item_count.byte_size() + array_total_size;
 
         result.reserve(4 + 1 + 1 + payload_size.byte_size() + payload_size.to_number());
         result += magic_bytes;
         result += (char)CommandCode::FILE_LIST;
         result += message_id;
         result += payload_size.to_string();
-        result += v_total_pages.to_string();
-        result += v_page_idx.to_string();
+        result += data.request_id;
+        result += v_packet_id.to_string();
         result += item_count.to_string();
 
         for (const auto &file : data.files) {
@@ -360,12 +354,11 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         Utils::VarInt varint;
         std::size_t nb_items;
 
+        data.request_id = payload[0];
+        payload = payload.substr(1);
         if (!varint.parse(payload, payload))
             throw std::runtime_error("BAD_REQUEST");
-        data.page.total = varint.to_number();
-        if (!varint.parse(payload, payload))
-            throw std::runtime_error("BAD_REQUEST");
-        data.page.current = varint.to_number();
+        data.packet_id = varint.to_number();
         if (!varint.parse(payload, payload))
             throw std::runtime_error("BAD_REQUEST");
         nb_items = varint.to_number();

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:23:57 2022 Francois Michaut
-** Last update Fri Dec  1 19:39:27 2023 Francois Michaut
+** Last update Wed Dec  6 06:26:43 2023 Francois Michaut
 **
 ** Config.hpp : Configuration of the file sharing
 */
@@ -29,11 +29,6 @@ namespace FileShare {
             // paths starting with '~/' will have this part replaced by the current user's home directory
             Config();
             ~Config() = default;
-
-            Config(const Config &other) = default;
-            Config(Config &&other) noexcept  = default;
-            Config &operator=(const Config &other)  = default;
-            Config &operator=(Config &&other) noexcept  = default;
 
             static Config from_file(std::filesystem::path config_file);
             void to_file(std::filesystem::path config_file);
