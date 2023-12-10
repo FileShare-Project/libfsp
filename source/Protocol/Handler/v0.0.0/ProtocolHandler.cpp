@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri May  5 21:35:06 2023 Francois Michaut
-** Last update Mon Dec  4 19:18:12 2023 Francois Michaut
+** Last update Sat Dec  9 08:58:26 2023 Francois Michaut
 **
 ** ProtocolHandler.cpp : ProtocolHandler for the v0.0.0 of the protocol
 */
@@ -410,7 +410,6 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
     std::shared_ptr<IRequestData> ProtocolHandler::parse_data_packet(std::string_view payload) {
         DataPacketData data;
         Utils::VarInt varint;
-        std::size_t nb_items;
 
         data.request_id = payload[0];
         payload = payload.substr(1);
@@ -430,7 +429,7 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
     // |     4     | |        1       | |       1      | |    MAX(8)    |
     // |   STRING  | |      ENUM      | |       -      | |    VARINT    |
     // ------------------------------------------------------------------
-    std::string ProtocolHandler::format_ping(std::uint8_t message_id, const PingData &data) {
+    std::string ProtocolHandler::format_ping(std::uint8_t message_id, [[maybe_unused]] const PingData &data) {
         std::string result;
         static const Utils::VarInt payload_size = 0;
 
@@ -442,7 +441,7 @@ namespace FileShare::Protocol::Handler::v0_0_0 {
         return result;
     }
 
-    std::shared_ptr<IRequestData> ProtocolHandler::parse_ping(std::string_view payload) {
+    std::shared_ptr<IRequestData> ProtocolHandler::parse_ping([[maybe_unused]] std::string_view payload) {
         return std::make_shared<PingData>();
     }
 }

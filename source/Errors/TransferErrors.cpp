@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Oct 22 13:51:24 2023 Francois Michaut
-** Last update Thu Nov 23 18:32:27 2023 Francois Michaut
+** Last update Sat Dec  9 08:57:23 2023 Francois Michaut
 **
 ** TransferErrors.cpp : Transfer related errors implementation
 */
@@ -13,7 +13,7 @@
 
 namespace FileShare::Errors::Transfer {
     UpToDateError::UpToDateError(const char *filename) :
-        UpToDateError(std::move(std::string(filename)))
+        UpToDateError(std::string(filename))
     {}
 
     UpToDateError::UpToDateError(std::string filename) :

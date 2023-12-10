@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri May  5 21:32:03 2023 Francois Michaut
-** Last update Thu Aug 24 09:42:01 2023 Francois Michaut
+** Last update Sat Dec  9 08:59:02 2023 Francois Michaut
 **
 ** ProtocolHandler.hpp : ProtocolHandler for the v0.0.0 of the protocol
 */
@@ -17,6 +17,8 @@
 namespace FileShare::Protocol::Handler::v0_0_0 {
     class ProtocolHandler : public IProtocolHandler {
         public:
+            virtual ~ProtocolHandler() = default;
+
             std::string format_send_file(std::uint8_t message_id, const SendFileData &data) override;
             std::string format_receive_file(std::uint8_t message_id, const ReceiveFileData &data) override;
             std::string format_list_files(std::uint8_t message_id, const ListFilesData &data) override;

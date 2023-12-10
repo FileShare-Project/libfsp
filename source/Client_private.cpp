@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Oct 23 21:33:10 2023 Francois Michaut
-** Last update Wed Dec  6 05:40:01 2023 Francois Michaut
+** Last update Sun Dec 10 18:47:02 2023 Francois Michaut
 **
 ** Client_private.cpp : Private functions of Client implementation
 */
@@ -187,7 +187,7 @@ namespace FileShare {
     }
 
     Protocol::MessageID Client::send_request(Protocol::CommandCode command, std::shared_ptr<Protocol::IRequestData> request_data) {
-        return send_request({command, request_data});
+        return send_request({command, request_data, 0});
     }
 
     Protocol::MessageID Client::send_request(Protocol::Request request) {
@@ -260,7 +260,7 @@ namespace FileShare {
                 std::forward_as_tuple(m_config.get_downloads_folder() / m_device_uuid / filepath.relative_path(), data)
             ).first;
             send_reply(request_id, Protocol::StatusCode::STATUS_OK);
-        } catch (Errors::Transfer::UpToDateError) {
+        } catch (Errors::Transfer::UpToDateError &) {
             send_reply(request_id, Protocol::StatusCode::UP_TO_DATE);
         }
         return result;

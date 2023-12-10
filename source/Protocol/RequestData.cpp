@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Jul 18 22:04:57 2023 Francois Michaut
-** Last update Wed Dec  6 05:24:16 2023 Francois Michaut
+** Last update Sat Dec  9 09:01:16 2023 Francois Michaut
 **
 ** RequestData.cpp : RequestData implementation for the requests payloads
 */
@@ -14,16 +14,6 @@
 #include "FileShare/Utils/Time.hpp"
 
 #include <sstream>
-
-static std::string debug_str(FileShare::Protocol::Page page) {
-    std::stringstream ss;
-
-    ss << "Page{"
-       << "total = " << page.total
-       << ", current = " << page.current
-       << "}";
-    return ss.str();
-}
 
 namespace FileShare::Protocol {
     ResponseData::ResponseData(StatusCode status) :
@@ -43,7 +33,7 @@ namespace FileShare::Protocol {
     {}
 
     FileListData::FileListData(std::uint8_t request_id, std::size_t packet_id, std::vector<FileInfo> files) :
-        request_id(request_id), files(files), packet_id(packet_id)
+        request_id(request_id), packet_id(packet_id), files(files)
     {}
 
     DataPacketData::DataPacketData(std::uint8_t request_id, std::size_t packet_id, std::string data) :

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:23:07 2022 Francois Michaut
-** Last update Mon Dec  4 21:55:25 2023 Francois Michaut
+** Last update Sat Dec  9 09:01:57 2023 Francois Michaut
 **
 ** Client.hpp : Client to communicate with peers with the FileShareProtocol
 */
@@ -37,8 +37,8 @@ namespace FileShare {
             void respond_to_request(Protocol::Request, Protocol::StatusCode);
 
             // Blocking functions
-            Protocol::Response<void> send_file(std::string filepath, ProgressCallback progress_callback = [](const std::string &filepath, std::size_t current_size, std::size_t total_size){});
-            Protocol::Response<void> receive_file(std::string filepath, ProgressCallback progress_callback = [](const std::string &filepath, std::size_t current_size, std::size_t total_size){});
+            Protocol::Response<void> send_file(std::string filepath, ProgressCallback progress_callback = [](const std::string &, std::size_t, std::size_t){});
+            Protocol::Response<void> receive_file(std::string filepath, ProgressCallback progress_callback = [](const std::string &, std::size_t, std::size_t){});
             Protocol::Response<std::vector<Protocol::FileInfo>> list_files(std::string folderpath = "");
             // TODO: Async non-blocking Functions
 

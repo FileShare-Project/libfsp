@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 24 08:51:14 2023 Francois Michaut
-** Last update Wed Dec  6 05:20:00 2023 Francois Michaut
+** Last update Sat Dec  9 08:49:52 2023 Francois Michaut
 **
 ** TransferHandler.hpp : Classes to handle the file transfers
 */
@@ -33,6 +33,7 @@ namespace FileShare {
     class DownloadTransferHandler : public IFileTransferHandler {
         public:
             DownloadTransferHandler(std::string destination_filename, std::shared_ptr<Protocol::SendFileData> original_request);
+            virtual ~DownloadTransferHandler() = default;
 
             void receive_packet(const Protocol::DataPacketData &data);
 
@@ -52,6 +53,10 @@ namespace FileShare {
     class UploadTransferHandler : public IFileTransferHandler {
         public:
             UploadTransferHandler(std::string filepath, std::shared_ptr<Protocol::SendFileData> original_request, std::size_t packet_start);
+            UploadTransferHandler(UploadTransferHandler &&other) noexcept = default;
+            virtual ~UploadTransferHandler() = default;
+
+            UploadTransferHandler &operator=(UploadTransferHandler &&other) noexcept = default;
 
             std::shared_ptr<Protocol::DataPacketData> get_next_packet(Protocol::MessageID original_request_id);
 
@@ -64,6 +69,7 @@ namespace FileShare {
     class ListFilesTransferHandler : public ITransferHandler {
         public:
             ListFilesTransferHandler(std::filesystem::path requested_path, FileMapping &file_mapping, std::size_t packet_size);
+            virtual ~ListFilesTransferHandler() = default;
 
             std::shared_ptr<Protocol::FileListData> get_next_packet(Protocol::MessageID original_request_id);
 
@@ -84,6 +90,7 @@ namespace FileShare {
     class FileListTransferHandler : public ITransferHandler {
         public:
             FileListTransferHandler() = default;
+            virtual ~FileListTransferHandler() = default;
 
             void receive_packet(Protocol::FileListData data);
 

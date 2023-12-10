@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 24 19:36:36 2023 Francois Michaut
-** Last update Thu Dec  7 11:09:56 2023 Francois Michaut
+** Last update Sat Dec  9 09:03:46 2023 Francois Michaut
 **
 ** TransferHandler.cpp : Implementation of classes to handle the file transfers
 */
@@ -172,7 +172,7 @@ namespace FileShare {
             case PathNode::HOST_FOLDER: {
                 const auto end = std::filesystem::directory_iterator();
 
-                for (int i = 0; m_directory_iterator != end && i < max_count; i++) {
+                for (std::size_t i = 0; m_directory_iterator != end && i < max_count; i++) {
                     auto filepath = m_requested_path / m_directory_iterator->path().filename();
                     auto file_type = m_directory_iterator->is_directory() ? Protocol::FileType::DIRECTORY : Protocol::FileType::FILE;
 
@@ -196,7 +196,7 @@ namespace FileShare {
             case PathNode::VIRTUAL: {
                 const auto &nodes = m_path_node->get_child_nodes();
 
-                for (int i = 0; i < max_count && m_node_iterator != nodes.end(); i++) {
+                for (std::size_t i = 0; i < max_count && m_node_iterator != nodes.end(); i++) {
                     const PathNode &node = m_node_iterator->second;
                     auto file_type = node.is_host_file() ? Protocol::FileType::FILE : Protocol::FileType::DIRECTORY;
 

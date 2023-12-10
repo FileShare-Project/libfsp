@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat May  6 22:13:15 2023 Francois Michaut
-** Last update Thu Nov 23 22:49:48 2023 Francois Michaut
+** Last update Sun Dec 10 18:45:08 2023 Francois Michaut
 **
 ** FileHash.cpp : Function to hash file contents
 */
@@ -40,7 +40,7 @@ namespace FileShare::Utils {
         unsigned char digest_buff[EVP_MAX_MD_SIZE];
         unsigned int output_size;
         FileHandle file(path, "r");
-        std::size_t ret = READ_SIZE;
+        std::int64_t ret = READ_SIZE;
         std::vector<char> buff(READ_SIZE);
 
 #if defined(OS_UNIX) && !defined(OS_APPLE)

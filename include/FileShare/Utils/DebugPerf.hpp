@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue May  9 10:08:36 2023 Francois Michaut
-** Last update Tue Jul 18 22:03:13 2023 Francois Michaut
+** Last update Sun Dec 10 18:43:47 2023 Francois Michaut
 **
 ** DebugPerf.hpp : A helper class to display time spent in functions or other scopes
 */
@@ -37,7 +37,7 @@ namespace FileShare::Utils {
 #else
     class DebugPerf {
         public:
-            DebugPerf(std::string name) {}
+            DebugPerf(std::string) {}
     };
 #endif
 }

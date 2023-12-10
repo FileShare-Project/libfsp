@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Wed Dec  6 06:27:53 2023 Francois Michaut
+** Last update Sun Dec 10 18:07:06 2023 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -70,6 +70,7 @@ namespace FileShare {
         return insert_client(std::move(client));
     }
 
+    Config &Server::get_config() { return m_config; }
     const Config &Server::get_config() const { return m_config; }
     void Server::set_config(const Config &config) { m_config = config; }
     const CppSockets::TlsSocket &Server::get_socket() const { return m_socket; }
