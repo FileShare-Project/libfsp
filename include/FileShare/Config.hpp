@@ -4,14 +4,14 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:23:57 2022 Francois Michaut
-** Last update Wed Dec  6 06:26:43 2023 Francois Michaut
+** Last update Sun Dec 10 17:37:30 2023 Francois Michaut
 **
 ** Config.hpp : Configuration of the file sharing
 */
 
 #pragma once
 
-#include "FileShare/FileMapping.hpp"
+#include "FileShare/Config/FileMapping.hpp"
 
 #include <filesystem>
 #include <vector>
@@ -26,12 +26,12 @@ namespace FileShare {
                                      // on current operation and errors/latency
             };
 
-            // paths starting with '~/' will have this part replaced by the current user's home directory
             Config();
             ~Config() = default;
 
-            static Config from_file(std::filesystem::path config_file);
-            void to_file(std::filesystem::path config_file);
+            // paths starting with '~/' will have this part replaced by the current user's home directory
+            static Config from_file(std::filesystem::path config_file = "~/.fsp/config");
+            void to_file(std::filesystem::path config_file = "~/.fsp/config");
 
             [[nodiscard]] const std::filesystem::path &get_downloads_folder() const;
             Config &set_downloads_folder(const std::filesystem::path path);
@@ -45,9 +45,7 @@ namespace FileShare {
             Config &set_private_keys_dir(std::filesystem::path path);
             Config &set_private_key_name(std::string name);
 
-            [[nodiscard]] const std::string &get_root_name() const;
             [[nodiscard]] TransportMode get_transport_mode() const;
-            Config &set_root_name(std::string root_name);
             Config &set_transport_mode(TransportMode mode);
 
             [[nodiscard]] bool is_server_disabled() const;

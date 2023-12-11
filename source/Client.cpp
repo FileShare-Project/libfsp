@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 20:50:53 2022 Francois Michaut
-** Last update Wed Dec  6 11:02:26 2023 Francois Michaut
+** Last update Sun Dec 10 18:46:14 2023 Francois Michaut
 **
 ** Client.cpp : Implementation of the FileShareProtocol Client
 */
@@ -87,6 +87,7 @@ namespace FileShare {
                 if (handler.finished()) {
                     m_download_transfers.erase(data->request_id);
                 }
+                break;
             }
             case Protocol::CommandCode::SEND_FILE: {
                 std::shared_ptr<Protocol::SendFileData> data = std::dynamic_pointer_cast<Protocol::SendFileData>(request.request);
@@ -124,6 +125,7 @@ namespace FileShare {
                 auto &handler = m_file_list_transfers.at(data->request_id);
 
                 handler.receive_packet(*data);
+                break;
             }
             default:
                 break;
@@ -144,7 +146,7 @@ namespace FileShare {
         // TODO: handle APPROVAL_PENDING
         if (status != Protocol::StatusCode::STATUS_OK) {
             m_upload_transfers.erase(result);
-            return {status};
+            return {status, {}};
         }
         while (!upload_handler.finished()) {
             if (m_message_queue.available_send_slots() > 0) {
@@ -159,7 +161,7 @@ namespace FileShare {
             }
         }
 
-        return {status}; // TODO
+        return {status, {}}; // TODO
     }
 
     Protocol::Response<void> Client::receive_file(std::string filepath, ProgressCallback progress_callback) {
@@ -171,7 +173,7 @@ namespace FileShare {
 
         // TODO: handle APPROVAL_PENDING
         if (status != Protocol::StatusCode::STATUS_OK) {
-            return {status};
+            return {status, {}};
         }
 
         auto incomming_requests = m_message_queue.get_incomming_requests();
@@ -193,7 +195,7 @@ namespace FileShare {
             poll_requests(); // TODO: currently blocking, but if it changes, needs to add a poll() call to avoid spamming loop
         }
 
-        return {status}; // TODO
+        return {status, {}}; // TODO
     }
 
     Protocol::Response<std::vector<Protocol::FileInfo>> Client::list_files(std::string folderpath) {

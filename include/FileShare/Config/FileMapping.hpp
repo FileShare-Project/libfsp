@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov 19 11:23:07 2023 Francois Michaut
-** Last update Wed Dec  6 02:24:38 2023 Francois Michaut
+** Last update Sun Dec 10 17:33:23 2023 Francois Michaut
 **
 ** FileMapping.hpp : Class to hold information about which files are available for listing/download
 */
@@ -27,6 +27,9 @@ namespace FileShare {
             enum Visibility { VISIBLE, HIDDEN };
             using NodeMap = std::unordered_map<std::string, PathNode, FileShare::Utils::string_hash, std::equal_to<>>;
 
+            PathNode() = default;
+            virtual ~PathNode() = default;
+
             static PathNode make_virtual_node(std::string name, Visibility visibility = HIDDEN);
             static PathNode make_virtual_node(std::string name, Visibility visibility, NodeMap child_nodes);
             static PathNode make_virtual_node(std::string name, Visibility visibility, std::vector<PathNode> child_nodes);
@@ -41,6 +44,7 @@ namespace FileShare {
             PathNode &clear_child_nodes();
 
             [[nodiscard]] std::string_view get_name() const;
+            [[nodiscard]] const std::string &get_name_str() const;
             PathNode &set_name(std::string name);
 
             [[nodiscard]] Type get_type() const;
@@ -95,7 +99,8 @@ namespace FileShare {
         public:
             using FilepathSet=std::unordered_set<std::filesystem::path>;
 
-            FileMapping(RootPathNode root_node = {}, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());
+            FileMapping() = default;
+            FileMapping(RootPathNode root_node, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());
 
             [[nodiscard]] std::string_view get_root_name() const;
             void set_root_name(std::string root_name);

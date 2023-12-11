@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Nov 16 22:14:51 2023 Francois Michaut
-** Last update Thu Dec  7 11:01:58 2023 Francois Michaut
+** Last update Sun Dec 10 17:48:38 2023 Francois Michaut
 **
 ** FileMapping.cpp : Config's PathNode implementation
 */
@@ -123,7 +123,9 @@ namespace FileShare {
     PathNode::NodeMap &PathNode::get_child_nodes() { return m_child_nodes; }
     const PathNode::NodeMap &PathNode::get_child_nodes() const { return m_child_nodes; }
     PathNode &PathNode::set_child_nodes(NodeMap nodes) {
-        assert_virtual_type(m_type);
+        if (!nodes.empty()) {
+            assert_virtual_type(m_type);
+        }
         m_child_nodes = std::move(nodes);
         return *this;
     }
@@ -134,6 +136,7 @@ namespace FileShare {
     }
 
     std::string_view PathNode::get_name() const { return m_name; }
+    const std::string &PathNode::get_name_str() const { return m_name; }
     PathNode &PathNode::set_name(std::string name) {
         assert_valid_name(name);
         m_name = std::move(name);
@@ -164,7 +167,9 @@ namespace FileShare {
 
     const std::filesystem::path &PathNode::get_host_path() const { return m_host_path; }
     PathNode &PathNode::set_host_path(std::filesystem::path host_path) {
-        assert_not_virtual_type(m_type);
+        if (!host_path.empty()) {
+            assert_not_virtual_type(m_type);
+        }
         m_host_path = std::move(host_path);
         return *this;
     }

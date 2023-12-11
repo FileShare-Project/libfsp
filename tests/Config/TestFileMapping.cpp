@@ -4,12 +4,12 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Nov 22 20:19:02 2023 Francois Michaut
-** Last update Wed Dec  6 02:46:41 2023 Francois Michaut
+** Last update Sun Dec 10 10:59:02 2023 Francois Michaut
 **
 ** TestFileMapping.cpp : FileMapping classes implementation
 */
 
-#include "FileShare/FileMapping.hpp"
+#include "FileShare/Config/FileMapping.hpp"
 
 #include <cassert>
 
