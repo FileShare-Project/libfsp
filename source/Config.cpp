@@ -78,7 +78,7 @@ namespace FileShare {
     Config &Config::set_server_disabled(bool disabled) { m_disable_server = disabled; return *this; }
 
     const std::filesystem::path &Config::default_private_keys_dir() {
-        static std::filesystem::path private_keys_dir = FileShare::Utils::resolve_home_component("~/.fsp/private");
+        static std::filesystem::path private_keys_dir = FileShare::Utils::resolve_home_component("~/.fsp/private").generic_string();
 
         return private_keys_dir;
     }

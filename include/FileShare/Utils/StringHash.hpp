@@ -10,6 +10,7 @@
 */
 
 #include <string>
+#include <filesystem>
 
 namespace FileShare::Utils {
     struct string_hash {
@@ -18,6 +19,7 @@ namespace FileShare::Utils {
 
         std::size_t operator()(const char* str) const        { return hash_type{}(str); }
         std::size_t operator()(std::string_view str) const   { return hash_type{}(str); }
-        std::size_t operator()(std::string const& str) const { return hash_type{}(str); }
+        std::size_t operator()(const std::string &str) const { return hash_type{}(str); }
+        std::size_t operator()(const std::filesystem::path &str) const { return hash_type{}(str.string().c_str()); }
     };
 }

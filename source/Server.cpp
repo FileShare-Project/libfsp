@@ -16,9 +16,14 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <openssl/bio.h>
 
 #ifdef OS_UNIX
     #include <poll.h>
+#else // Windows only
+    using nfds_t=std::size_t;
+
+    static auto &poll=WSAPoll; // alias function poll to WSAPoll
 #endif
 
 namespace FileShare {
@@ -42,7 +47,7 @@ namespace FileShare {
 
             this->m_socket = CppSockets::TlsSocket(AF_INET, SOCK_STREAM, 0);
             this->m_socket.set_reuseaddr(true);
-            this->m_socket.set_certificate(cert_path, key_path);
+            this->m_socket.set_certificate(cert_path.generic_string(), key_path.generic_string());
             this->m_socket.bind(*this->m_server_endpoint);
             this->m_socket.listen(10); // TODO: configurable backlog
         }
@@ -130,7 +135,6 @@ namespace FileShare {
     }
 
     void Server::poll_events() {
-#ifdef OS_UNIX
         // TODO: avoid re-allocating the vector every time
         std::vector<struct pollfd> fds;
         nfds_t nfds = m_clients.size() + 1;
@@ -142,10 +146,10 @@ namespace FileShare {
         for (auto &iter : m_clients) {
             fds.emplace_back(pollfd({iter.first, POLLIN, 0}));
         }
-#ifdef OS_APPLE
-        nb_ready = poll(fds.data(), nfds, timeout.tv_sec * 1000);
-#else
+#ifdef OS_LINUX
         nb_ready = ppoll(fds.data(), nfds, &timeout, nullptr);
+#else
+        nb_ready = poll(fds.data(), nfds, timeout.tv_sec * 1000);
 #endif
         // if (nb_ready < 0) // TODO: handle signals
         //     throw std::runtime_error("Failed to poll");
@@ -167,9 +171,6 @@ namespace FileShare {
                 }
             }
         }
-#else
-        #error "Not implemented"
-#endif
     }
 
     bool Server::handle_client_events(std::shared_ptr<Client> &client) {
@@ -234,35 +235,29 @@ namespace FileShare {
             ) {
                 throw std::runtime_error("Failed to sign certificate: " + std::string(ERR_error_string(ERR_get_error(), nullptr)));
             }
-            std::FILE *pkey_file = std::fopen(key_path.string().c_str(), "w");
-            std::FILE *cert_file = std::fopen(cert_path.string().c_str(), "w");
 
-            if (pkey_file == nullptr || cert_file == nullptr) {
-                pkey_file != nullptr ? std::fclose(pkey_file) : 0;
-                cert_file != nullptr ? std::fclose(cert_file) : 0;
-                throw std::runtime_error("Failed to open '" + (pkey_file == nullptr ? key_path.string() : cert_path.string()) + "' for writing");
-            }
             std::error_code ec;
+            { // scope for BIO uniq ptr so we can control when they are freed/closed
+                CppSockets::BIO_ptr pkey_file = {BIO_new_file(key_path.string().c_str(), "w"), BIO_free};
+                CppSockets::BIO_ptr cert_file = {BIO_new_file(cert_path.string().c_str(), "w"), BIO_free};
 
-            // TODO: encrypt private key
-            if (PEM_write_PrivateKey(pkey_file, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr) < 1 ||
-                PEM_write_X509(cert_file, x509.get()) < 1
-            ) {
-                std::fclose(pkey_file);
-                std::fclose(cert_file);
-                std::filesystem::remove(key_path, ec);
-                std::filesystem::remove(cert_path);
-                if (ec)
-                    throw std::runtime_error(ec.message());
-                throw std::runtime_error("Failed to write key/certificate to file");
-            }
-            if (std::fclose(pkey_file) + std::fclose(cert_file) != 0) {
-                std::filesystem::remove(key_path, ec);
-                std::filesystem::remove(cert_path);
-                if (ec)
-                    throw std::runtime_error(ec.message());
-                throw std::runtime_error("Failed to save key/certificate to disk");
-            }
+                if (!pkey_file || !cert_file) {
+                    throw std::runtime_error("Failed to open '" + (pkey_file == nullptr ? key_path.string() : cert_path.string()) + "' for writing");
+                }
+
+                // TODO: encrypt private key
+                if (PEM_write_bio_PrivateKey(pkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr) < 1 ||
+                    PEM_write_bio_X509(cert_file.get(), x509.get()) < 1
+                ) {
+                    std::filesystem::remove(key_path, ec);
+                    std::filesystem::remove(cert_path);
+                    if (ec)
+                        throw std::runtime_error(ec.message());
+                    throw std::runtime_error("Failed to write key/certificate to file");
+                }
+            } // Close both files
+              // TODO: raise error if close fails
+
             std::filesystem::permissions(key_path, Config::secure_file_perms, ec);
             if (ec) {
                 std::error_code ec2;
@@ -280,7 +275,9 @@ namespace FileShare {
         }
         if (std::filesystem::status(key_path).permissions() != Config::secure_file_perms) {
             // TODO maybe add a param to force set ?
+#ifndef OS_WINDOWS
             throw std::runtime_error("Insecure permissions for the private key !");
+#endif
         }
     }
 

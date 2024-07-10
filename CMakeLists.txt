@@ -15,10 +15,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-set(CMAKE_CXX_FLAGS_DEBUG_INIT "-O3 -DDEBUG -g3")
-set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O3")
-add_compile_definitions(_GNU_SOURCE)
+if(!WIN32)
+  set(CMAKE_CXX_FLAGS_DEBUG_INIT "-O3 -DDEBUG -g3")
+  set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O3")
+  add_compile_definitions(_GNU_SOURCE)
+endif()
 
 project(LibFileShareProtocol VERSION 0.1.0 LANGUAGES C CXX)
 configure_file(include/FileShare/Version.hpp.in FileShare/Version.hpp)
@@ -59,8 +62,12 @@ target_compile_options(fsp PRIVATE
 )
 
 target_link_libraries(fsp cppsockets cereal)
+if(WIN32)
+  target_link_libraries(fsp userenv)
+endif()
 
 option(LIBFSP_BUILD_TESTS "TRUE to build the libfsp tests" FALSE)
 if(LIBFSP_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
+

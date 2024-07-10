@@ -11,6 +11,8 @@
 
 #include "FileShare/MessageQueue.hpp"
 
+#include <stdexcept>
+
 namespace FileShare {
     std::uint8_t MessageQueue::send_request(Protocol::Request request) {
         if (m_available_send_slots == 0) {

@@ -176,7 +176,7 @@ namespace FileShare {
                     auto filepath = m_requested_path / m_directory_iterator->path().filename();
                     auto file_type = m_directory_iterator->is_directory() ? Protocol::FileType::DIRECTORY : Protocol::FileType::FILE;
 
-                    vector.emplace_back(Protocol::FileInfo{filepath, file_type});
+                    vector.emplace_back(Protocol::FileInfo{filepath.string(), file_type});
                     m_directory_iterator++;
                 }
                 break;
@@ -190,7 +190,7 @@ namespace FileShare {
                 if (entry.is_directory()) {
                     break; // It's supposed to be a file, abort
                 }
-                vector.emplace_back(Protocol::FileInfo{m_requested_path, Protocol::FileType::FILE});
+                vector.emplace_back(Protocol::FileInfo{m_requested_path.string(), Protocol::FileType::FILE});
                 break;
             }
             case PathNode::VIRTUAL: {
@@ -200,7 +200,7 @@ namespace FileShare {
                     const PathNode &node = m_node_iterator->second;
                     auto file_type = node.is_host_file() ? Protocol::FileType::FILE : Protocol::FileType::DIRECTORY;
 
-                    vector.emplace_back(Protocol::FileInfo{m_requested_path / node.get_name(), file_type});
+                    vector.emplace_back(Protocol::FileInfo{(m_requested_path / node.get_name()).string(), file_type});
                     m_node_iterator++;
                 }
                 break;

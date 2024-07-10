@@ -14,6 +14,10 @@
 
 #ifdef OS_UNIX
     #include <poll.h>
+#else // Windows only
+    using nfds_t=std::size_t;
+
+    static auto &poll=WSAPoll; // alias function poll to WSAPoll
 #endif
 
 namespace FileShare {
@@ -220,7 +224,7 @@ namespace FileShare {
         total_packets -= packet_start;
 
         std::shared_ptr<Protocol::SendFileData> send_file_data = std::make_shared<Protocol::SendFileData>(std::move(virtual_filepath), Utils::HashAlgorithm::SHA512, file_hash, file_updated_at, packet_size, total_packets);
-        handler = {std::move(host_filepath), std::move(send_file_data), packet_start};
+        handler = {host_filepath.string(), std::move(send_file_data), packet_start};
         return std::make_pair(std::move(handler), Protocol::StatusCode::STATUS_OK);
     }
 
@@ -257,7 +261,7 @@ namespace FileShare {
             result = m_download_transfers.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(request_id),
-                std::forward_as_tuple(m_config.get_downloads_folder() / m_device_uuid / filepath.relative_path(), data)
+                std::forward_as_tuple((m_config.get_downloads_folder() / m_device_uuid / filepath.relative_path()).string(), data)
             ).first;
             send_reply(request_id, Protocol::StatusCode::STATUS_OK);
         } catch (Errors::Transfer::UpToDateError &) {
@@ -279,10 +283,10 @@ namespace FileShare {
             int nb_ready = 0;
 
             fds[0] = {m_socket.get_fd(), POLLIN, 0};
-#ifdef OS_APPLE
-            nb_ready = poll(fds.data(), nfds, -1); // TODO: add timeout
-#else
+#ifdef OS_LINUX
             nb_ready = ppoll(fds.data(), nfds, nullptr, nullptr); // TODO: add timeout
+#else
+            nb_ready = poll(fds.data(), nfds, -1); // TODO: add timeout
 #endif
             if (nb_ready < 0) // TODO: handle signals
                 throw std::runtime_error("Failed to poll for status");

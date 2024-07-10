@@ -16,7 +16,10 @@
 
 #include <fcntl.h>
 #include <string.h>
-#include <unistd.h>
+
+#ifndef OS_WINDOWS
+  #include <unistd.h>
+#endif
 
 namespace FileShare::Utils {
     FileHandleBase::FileHandleBase(std::string filename) :
@@ -82,7 +85,7 @@ namespace FileShare::Utils {
     {}
 
     FileHandle::FileHandle(const std::filesystem::path &path, const char *mode)
-        : FileHandle(fopen(path.c_str(), mode), path.string())
+        : FileHandle(fopen(path.string().c_str(), mode), path.string())
     {}
 
     FileHandle::~FileHandle()

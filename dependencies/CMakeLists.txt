@@ -14,7 +14,7 @@ include(FetchContent)
 FetchContent_Declare(
   cppsockets
   GIT_REPOSITORY  https://github.com/FileShare-Project/libcppsockets.git
-  GIT_TAG         7a0bd91b16f6c3aa808e26684916e0dcc935717a
+  GIT_TAG         8161640e1686507cc19b069faf7610e31c19238e
 )
 FetchContent_MakeAvailable(cppsockets)
 

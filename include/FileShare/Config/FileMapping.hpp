@@ -97,7 +97,7 @@ namespace FileShare {
 
     class FileMapping {
         public:
-            using FilepathSet=std::unordered_set<std::filesystem::path>;
+            using FilepathSet=std::unordered_set<std::filesystem::path, FileShare::Utils::string_hash, std::equal_to<>>;
 
             FileMapping() = default;
             FileMapping(RootPathNode root_node, FilepathSet forbidden_paths = FileMapping::default_forbidden_paths());

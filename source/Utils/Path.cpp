@@ -14,6 +14,10 @@
 #include <CppSockets/OSDetection.hpp>
 
 #ifdef OS_WINDOWS
+  #include <userenv.h>
+
+  #include <array>
+  #include <string>
 #else
   #include <pwd.h>
   #include <sys/types.h>
@@ -23,20 +27,53 @@
 namespace FileShare::Utils {
     std::filesystem::path home_directoy(const std::string &user) {
         std::string res;
-#ifdef OS_WINDOWS
-        // https://github.com/python/cpython/blob/main/Lib/ntpath.py
-#else
-        char *home = std::getenv("HOME");
-        struct passwd *entry = nullptr;
+        char *home = nullptr;
 
+#ifdef OS_WINDOWS
+        if (user.empty()) {
+            home = std::getenv("USERPROFILE");
+
+            if (home != nullptr) {
+                res = home;
+            } else {
+                char *drive = std::getenv("HOMEDRIVE");
+                std::filesystem::path homepath = drive ? drive : "";
+
+                home = std::getenv("HOMEPATH");
+                if (home != nullptr) {
+                    res = (homepath / home).string();
+                }
+            }
+        }
+        if (res.empty()) {
+            std::array<char, 4096> users_path = {0};
+            DWORD size = users_path.size();
+
+            if (GetProfilesDirectoryA(users_path.data(), &size)) {
+                std::filesystem::path homepath = users_path.data();
+
+                res = (homepath / user).string();
+            }
+        }
+#else
+        if (user.empty()) {
+            home = std::getenv("HOME");
+        }
         if (home == nullptr) {
-            entry = user.empty() ? getpwuid(geteuid()) : getpwnam(user.c_str());
+            struct passwd *entry = user.empty() ? getpwuid(geteuid()) : getpwnam(user.c_str());
+
             home = entry != nullptr ? entry->pw_dir : nullptr;
         }
+        if (home == nullptr) {
+            return "";
+        }
         res = home;
-        if (res.back() != '/')
-            res += '/';
 #endif
+        if (res.empty()) {
+            return res;
+        }
+        if (res.back() != std::filesystem::path::preferred_separator)
+            res += std::filesystem::path::preferred_separator;
         return res;
     }
 
@@ -47,9 +84,7 @@ namespace FileShare::Utils {
     }
 
     std::filesystem::path resolve_home_component(const std::filesystem::path &path) {
-        using value_type=std::filesystem::path::value_type;
-        using string_type=std::filesystem::path::string_type;
-        string_type str = path.generic_string<value_type>();
+        auto str = path.generic_string();
 
         if (str.find('~') != 0)
             return path;
