@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Nov 16 22:14:51 2023 Francois Michaut
-** Last update Sun Dec 10 17:48:38 2023 Francois Michaut
+** Last update Sat Aug 10 09:31:18 2024 Francois Michaut
 **
 ** FileMapping.cpp : Config's PathNode implementation
 */
@@ -16,6 +16,7 @@
 #include <deque>
 #include <unordered_set>
 #include <ranges>
+#include <sstream>
 
 static std::string stack_to_path(const std::deque<const FileShare::PathNode *> &stack) {
     std::stringstream ss;
