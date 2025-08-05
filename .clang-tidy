@@ -1,0 +1,41 @@
+Checks: '
+*,
+-llvmlibc-*,
+-android-*,
+-altera-*,
+-fuchsia*,
+-google-readability-todo,
+-cppcoreguidelines-init-variables,
+-cppcoreguidelines-pro-type-reinterpret-cast,
+-llvm-namespace-comment,
+-readability-implicit-bool-conversion,
+-google-explicit-constructor,
+-abseil-string-find-str-contains,
+-readability-avoid-return-with-void-value,
+-readability-convert-member-functions-to-static,
+
+-google-readability-braces-around-statements,
+-google-readability-namespace-comments,
+-hicpp-special-member-functions,
+-hicpp-braces-around-statements,
+-hicpp-explicit-conversions
+'
+
+WarningsAsErrors: 'bugprone-exception-escape'
+FormatStyle: 'none' # TODO: Replace with 'file' once we have a proper .clang-format file
+InheritParentConfig: true
+CheckOptions:
+  misc-include-cleaner.MissingIncludes: 'false'
+  misc-include-cleaner.IgnoreHeaders: 'CppSockets/OSDetection.*;.*Version.hpp'
+
+  bugprone-argument-comment.StrictMode: 1
+
+  # Readability
+  readability-braces-around-statements.ShortStatementLines: 2
+
+  readability-identifier-naming.NamespaceCase: CamelCase
+
+  readability-identifier-length.IgnoredVariableNames: "^(fd|nb|n|ss|ec|is|os|_.*)$"
+  readability-identifier-length.IgnoredParameterNames: "^(fd|n|is|os|_.*)$"
+
+  cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor: true

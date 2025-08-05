@@ -4,11 +4,12 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat May  6 12:40:55 2023 Francois Michaut
-** Last update Sun Jul 16 13:48:35 2023 Francois Michaut
+** Last update Thu Aug 14 14:20:36 2025 Francois Michaut
 **
 ** VarInt.hpp : Variable size integer implementation
 */
 
+#include <cstdint>
 #include <stdexcept>
 
 #include "FileShare/Utils/VarInt.hpp"
@@ -27,7 +28,7 @@ namespace FileShare::Utils {
         *this = other;
     }
 
-    VarInt &VarInt::operator=(const VarInt &other) {
+    auto VarInt::operator=(const VarInt &other) -> VarInt & {
         m_values = other.m_values;
         m_value = other.m_value;
         m_value_dirty = other.m_value_dirty;
@@ -45,28 +46,28 @@ namespace FileShare::Utils {
             m_values.push_back(0);
         }
         while (value != 0) {
-            tmp = (value & 0x7F);
-            tmp |= (value - tmp == 0 ? 0 : 0x80);
-            m_values.push_back(tmp);
-            value >>= 7;
+            tmp = (value & 0x7FU);
+            tmp |= (value - tmp == 0 ? 0 : 0x80U);
+            m_values.push_back(static_cast<char>(tmp));
+            value >>= 7U;
         }
         reset_string_view();
     }
 
-    bool VarInt::parse(std::string_view input) {
+    auto VarInt::parse(std::string_view input) -> bool {
         std::string_view dummy;
 
         return parse(input, dummy);
     }
 
-    bool VarInt::parse(std::string_view input, std::string_view &output) {
+    auto VarInt::parse(std::string_view input, std::string_view &output) -> bool {
         std::vector<char> result;
 
         result.reserve(input.size());
         for (auto iter = input.begin(); iter != input.end(); iter++) {
             result.push_back(*iter);
             // TODO: double check that the fact *iter is signed integer does not mess up the calculations
-            if ((*iter & 0x80) == 0) {
+            if ((static_cast<std::uint8_t>(*iter) & 0x80U) == 0) {
                 m_value_dirty = true;
                 m_values = std::move(result);
                 reset_string_view();
@@ -77,11 +78,7 @@ namespace FileShare::Utils {
         return false;
     }
 
-    std::string_view VarInt::to_string() const {
-        return m_string;
-    }
-
-    std::size_t VarInt::to_number() const {
+    auto VarInt::to_number() const -> std::size_t {
         if (m_value_dirty)
             reset_number_view();
         return m_value;
@@ -91,11 +88,7 @@ namespace FileShare::Utils {
         m_string = std::string_view(m_values.begin(), m_values.end());
     }
 
-    std::size_t VarInt::byte_size() const {
-        return m_values.size();
-    }
-
-    std::strong_ordering VarInt::operator<=>(const VarInt &other) const {
+    auto VarInt::operator<=>(const VarInt &other) const -> std::strong_ordering {
         // TODO: this won't work for infinite or negative numbers
         return m_value <=> other.m_value;
     }
@@ -105,13 +98,13 @@ namespace FileShare::Utils {
         constexpr std::uint8_t leftover_value = (sizeof(std::size_t) * 8) % 7;
         constexpr std::size_t max_size = (sizeof(std::size_t) * 8) / 7;
 
-        if (m_values.size() > max_size && !(m_values.size() == (max_size + 1) && (std::uint8_t)m_values.back() == leftover_value))
+        if (m_values.size() > max_size && (m_values.size() != (max_size + 1) || static_cast<std::uint8_t>(m_values.back()) != leftover_value))
             throw std::runtime_error("Value is too big to fit in a std::size_t");
 
         // Iterate in reverse since we need the low significant bit first
         // and they are at the end of the string representation
         for (auto iter = m_values.rbegin(); iter != m_values.rend(); iter++) {
-            result = (result << 7) + (*iter & 0x7F);
+            result = (result << 7U) + (static_cast<std::uint8_t>(*iter) & 0x7FU);
         }
         m_value = result;
         m_value_dirty = false;

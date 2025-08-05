@@ -4,55 +4,52 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat May  6 22:13:15 2023 Francois Michaut
-** Last update Sun Dec 10 18:45:08 2023 Francois Michaut
+** Last update Wed Aug 20 16:40:49 2025 Francois Michaut
 **
 ** FileHash.cpp : Function to hash file contents
 */
 
+#include "FileShare/Utils/DebugPerf.hpp"
 #include "FileShare/Utils/FileDescriptor.hpp"
 #include "FileShare/Utils/FileHash.hpp"
-#include "FileShare/Utils/DebugPerf.hpp"
 
 #include <CppSockets/OSDetection.hpp>
-#include <CppSockets/TlsSocket.hpp>
+#include <CppSockets/Tls/Utils.hpp>
 
 #include <openssl/evp.h>
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
+#include <cstdio>
 #include <vector>
-
-#include <stdio.h>
 
 #ifdef OS_UNIX
   #include <fcntl.h>
 #endif
 
-#define READ_SIZE 0x8000 // = 32_768 bytes
+constexpr auto READ_SIZE = 0x8000; // = 32_768 bytes
 
 // TODO: custom exceptions with errno support when needed
 namespace FileShare::Utils {
-    std::string file_hash(HashAlgorithm algo, const std::filesystem::path &path) {
+    auto file_hash(HashAlgorithm algo, const std::filesystem::path &path) -> std::string {
         DebugPerf debug("file_hash");
 
-        CppSockets::EVP_MD_ptr md;
-        CppSockets::EVP_MD_CTX_ptr ctx;
-        unsigned char digest_buff[EVP_MAX_MD_SIZE];
+        CppSockets::EVP_MD_ptr digest {EVP_MD_fetch(nullptr, algo_to_string(algo), nullptr)};
+        CppSockets::EVP_MD_CTX_ptr ctx {EVP_MD_CTX_new()};
+        std::array<unsigned char, EVP_MAX_MD_SIZE> digest_buff = {0};
         unsigned int output_size;
         FileHandle file(path, "r");
-        std::int64_t ret = READ_SIZE;
+        std::size_t ret = READ_SIZE;
         std::vector<char> buff(READ_SIZE);
 
 #if defined(OS_UNIX) && !defined(OS_APPLE)
         posix_fadvise(file.fd(false), 0, 0, POSIX_FADV_SEQUENTIAL); // Ignoring return - this is optional
 #endif
-        md = {EVP_MD_fetch(nullptr, algo_to_string(algo), nullptr), EVP_MD_free};
-        ctx = {EVP_MD_CTX_new(), EVP_MD_CTX_free};
-        if (!md || !ctx)
+        if (!digest || !ctx)
             throw std::runtime_error("Failed to intialize the hash context");
 
         EVP_MD_CTX_set_flags(ctx.get(), EVP_MD_CTX_FLAG_FINALISE);
-        if (EVP_DigestInit(ctx.get(), md.get()) <= 0)
+        if (EVP_DigestInit(ctx.get(), digest.get()) <= 0)
             throw std::runtime_error("Failed to init the digest context");
 
         while (ret == READ_SIZE) {
@@ -64,19 +61,20 @@ namespace FileShare::Utils {
 
             if (ret == 0)
                 break;
-            else if (ret < 0)
+
+            if (ret < 0)
                 throw std::runtime_error("File read failed");
             if (EVP_DigestUpdate(ctx.get(), buff.data(), ret) <= 0)
                 throw std::runtime_error("Failed to hash file data");
         }
-        if (EVP_DigestFinal(ctx.get(), digest_buff, &output_size) <= 0)
+        if (EVP_DigestFinal(ctx.get(), digest_buff.data(), &output_size) <= 0)
             throw std::runtime_error("Failed to compute the file hash");
         if (output_size != algo_hash_size(algo))
             throw std::runtime_error("Hash size is not what was expected");
-        return std::string((char *)digest_buff, output_size);
+        return {reinterpret_cast<char *>(digest_buff.data()), output_size};
     }
 
-    std::size_t algo_hash_size(HashAlgorithm algo) {
+    auto algo_hash_size(HashAlgorithm algo) -> std::size_t{
         switch (algo) {
             case HashAlgorithm::MD5:
                 return MD5_DIGEST_LENGTH;
@@ -89,7 +87,7 @@ namespace FileShare::Utils {
         }
     }
 
-    const char *algo_to_string(HashAlgorithm algo) {
+    auto algo_to_string(HashAlgorithm algo) -> const char * {
         switch (algo) {
             case HashAlgorithm::MD5:
                 return "md5";

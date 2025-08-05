@@ -30,7 +30,7 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
+      uses: github/codeql-action/init@v3
       with:
         languages: 'c-cpp'
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -44,23 +44,10 @@ jobs:
     # Autobuild attempts to build any compiled languages (C/C++, C#, Go, Java, or Swift).
     # If this step fails, then you should remove it and run the build manually (see below)
     - name: Autobuild
-      env:
-        CXX: g++-13
-        CC: gcc-13
-      uses: github/codeql-action/autobuild@v2
-
-    # ℹ️ Command-line programs to run using the OS shell.
-    # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
-
-    #   If the Autobuild fails above, remove it and uncomment the following three lines.
-    #   modify them (or add more) to build your code if your project, please refer to the EXAMPLE below for guidance.
-
-    # - run: |
-    #     echo "Run, Build Application using script"
-    #     ./location_of_script_within_repo/buildscript.sh
+      uses: github/codeql-action/autobuild@v3
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      uses: github/codeql-action/analyze@v3
       with:
         category: "/language:c-cpp"
 
@@ -76,53 +63,66 @@ jobs:
         uses: actions/checkout@v3
 
       - name: flawfinder_scan
-        uses: david-a-wheeler/flawfinder@8e4a779ad59dbfaee5da586aa9210853b701959c
+        uses: david-a-wheeler/flawfinder@2.0.19
         with:
           arguments: '--sarif ./'
           output: 'flawfinder_results.sarif'
 
       - name: Upload analysis results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: ${{github.workspace}}/flawfinder_results.sarif
 
-  # microsoft-analyze:
-  #   permissions:
-  #     contents: read # for actions/checkout to fetch code
-  #     security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
-  #     actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
-  #   name: Microsoft Analyze
-  #   runs-on: windows-latest
+  microsoft-analyze:
+    permissions:
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+      contents: read # for actions/checkout to fetch code
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+    name: Microsoft Analyze
+    runs-on: windows-latest
 
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v3
+    env:
+      # Path to the CMake build directory.
+      build: '${{ github.workspace }}/build'
+      config: 'Debug'
 
-  #     - name: Configure CMake
-  #       run: cmake -B ./build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-  #     # Build is not required unless generated source files are used
-  #     # - name: Build CMake
-  #     #   run: cmake --build ./build
+      - name: VCPKG Install (Windows)
+        uses: ./.github/workflows/windows-vcpkg
+        with:
+          key: ${{ runner.os }}-${{ env.config }}
 
-  #     - name: Initialize MSVC Code Analysis
-  #       uses: microsoft/msvc-code-analysis-action@04825f6d9e00f87422d6bf04e1a38b1f3ed60d99
-  #       # Provide a unique ID to access the sarif output path
-  #       id: run-analysis
-  #       with:
-  #         cmakeBuildDirectory: ${{ env.build }}
-  #         # Ruleset file that will determine what checks will be run
-  #         ruleset: NativeRecommendedRules.ruleset
+      - name: Configure CMake
+        run: cmake -B ${{ env.build }} -DCMAKE_BUILD_TYPE=${{ env.config }}
 
-  #     # Upload SARIF file to GitHub Code Scanning Alerts
-  #     - name: Upload SARIF to GitHub
-  #       uses: github/codeql-action/upload-sarif@v2
-  #       with:
-  #         sarif_file: ${{ steps.run-analysis.outputs.sarif }}
+      # Build is not required unless generated source files are used
+      # - name: Build CMake
+      #   run: cmake --build ${{ env.build }} --config ${{ env.config }}
 
-  #     # Upload SARIF file as an Artifact to download and view
-  #     # - name: Upload SARIF as an Artifact
-  #     #   uses: actions/upload-artifact@v3
-  #     #   with:
-  #     #     name: sarif-file
-  #     #     path: ${{ steps.run-analysis.outputs.sarif }}
+      - name: Run MSVC Code Analysis
+        uses: microsoft/msvc-code-analysis-action@v0.1.1
+        # Provide a unique ID to access the sarif output path
+        id: run-analysis
+        with:
+          cmakeBuildDirectory: ${{ env.build }}
+          buildConfiguration: ${{ env.config }}
+          # Ruleset file that will determine what checks will be run
+          ruleset: NativeRecommendedRules.ruleset
+          # Paths to ignore analysis of CMake targets and includes
+          # ignoredPaths: ${{ github.workspace }}/dependencies;${{ github.workspace }}/test
+
+      # Upload SARIF file to GitHub Code Scanning Alerts
+      - name: Upload SARIF to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.run-analysis.outputs.sarif }}
+
+      # # Upload SARIF file as an Artifact to download and view
+      # - name: Upload SARIF as an Artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: sarif-file
+      #     path: ${{ steps.run-analysis.outputs.sarif }}

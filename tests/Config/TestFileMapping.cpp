@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Nov 22 20:19:02 2023 Francois Michaut
-** Last update Sun Dec 10 10:59:02 2023 Francois Michaut
+** Last update Sun Aug 24 12:04:58 2025 Francois Michaut
 **
 ** TestFileMapping.cpp : FileMapping classes implementation
 */
@@ -134,15 +134,21 @@ static void test_set_name() {
         assert(false);
     } catch (std::runtime_error &e) {}
 
-    RootPathNode node2("//test");
+    RootPathNode root_node("//test/");
 
-    assert(node2.get_name() == "//test");
-    node2.set_name("//test2");
-    assert(node2.get_name() == "//test2");
+    assert(root_node.get_name() == "//test");
+    root_node.set_name("//test2");
+    assert(root_node.get_name() == "//test2");
 
     try {
         // Crashes if / in middle of name
-        node2.set_name("test/test2");
+        root_node.set_name("test/test2");
+        assert(false);
+    } catch (std::runtime_error &e) {}
+
+    try {
+        // Crashes if more than 2 / at begining of name
+        root_node.set_name("///test2");
         assert(false);
     } catch (std::runtime_error &e) {}
 }
@@ -181,7 +187,7 @@ static void test_host_to_virtual() {
         PathNode::make_host_node("opt", PathNode::HOST_FOLDER, "/opt", PathNode::HIDDEN),
     };
 
-    FileMapping mapping({"//fsp", root_nodes});
+    FileMapping mapping(RootPathNode{"//fsp", root_nodes});
 
     assert(mapping.host_to_virtual("/non-existent/path").empty());
     assert(mapping.host_to_virtual("/home").empty());
@@ -217,50 +223,41 @@ static void test_host_to_virtual() {
     assert(mapping.host_to_virtual("/opt/yolo/foo/bar").empty());
 }
 
-static void test_find_virtual_node() {
-    PathNode test1_node = PathNode::make_host_node("test1", PathNode::HOST_FILE, "/home/user1/test", PathNode::VISIBLE);
-    PathNode test2_node = PathNode::make_host_node("test2", PathNode::HOST_FILE, "/home/user2/test", PathNode::HIDDEN);
-    PathNode downloads_node = PathNode::make_host_node("downloads", PathNode::HOST_FOLDER, "/home/user/downloads", PathNode::VISIBLE);
-    PathNode documents_node = PathNode::make_host_node("documents", PathNode::HOST_FOLDER, "/home/user/documents", PathNode::HIDDEN);
-    PathNode username_node = PathNode::make_virtual_node("username", PathNode::VISIBLE, {
-        // Visible file inside a visible folder -> should succeed
-        {test1_node},
-        // Hidden file inside a visible folder -> should fail
-        {test2_node},
-        // Visible folder inside a visible folder -> should succeed for the folder and anything inside it
-        {downloads_node},
-        // Hidden folder inside a visible folder -> should fail for the folder and anything inside it
-        {documents_node}
-    });
-    PathNode home_node = PathNode::make_virtual_node("home", PathNode::VISIBLE, {username_node});
+#include <iostream>
 
-    PathNode passwd_node = PathNode::make_host_node("passwd", PathNode::HOST_FILE, "/etc/passwd", PathNode::HIDDEN);
-    PathNode fstab_node = PathNode::make_host_node("fstab", PathNode::HOST_FILE, "/etc/fstab", PathNode::VISIBLE);
-    PathNode etc_node = PathNode::make_virtual_node("etc", PathNode::VISIBLE, {
-        // Visible file inside a visible folder -> should succeed
-        {fstab_node},
-        // Hidden file inside a visible folder -> should fail
-        {passwd_node}
-    });
-    PathNode root_node = PathNode::make_virtual_node("root", PathNode::HIDDEN, {
+static void test_find_virtual_node() {
+    FileMapping mapping;
+    RootPathNode &root_path_node = mapping.get_root_node();
+
+
+    PathNode &home_node = root_path_node.insert_child_node(PathNode::make_virtual_node("home", PathNode::VISIBLE));
+    PathNode &username_node = home_node.insert_child_node(PathNode::make_virtual_node("username", PathNode::VISIBLE));
+    // Visible file inside a visible folder -> should succeed
+    PathNode &test1_node = username_node.insert_child_node(PathNode::make_host_node("test1", PathNode::HOST_FILE, "/home/user1/test", PathNode::VISIBLE));
+    // Hidden file inside a visible folder -> should fail
+    PathNode &test2_node = username_node.insert_child_node(PathNode::make_host_node("test2", PathNode::HOST_FILE, "/home/user2/test", PathNode::HIDDEN));
+    // Visible folder inside a visible folder -> should succeed for the folder and anything inside it
+    PathNode &downloads_node = username_node.insert_child_node(PathNode::make_host_node("downloads", PathNode::HOST_FOLDER, "/home/user/downloads", PathNode::VISIBLE));
+    // Hidden folder inside a visible folder -> should fail for the folder and anything inside it
+    PathNode &documents_node = username_node.insert_child_node(PathNode::make_host_node("documents", PathNode::HOST_FOLDER, "/home/user/documents", PathNode::HIDDEN));
+
+
+    PathNode &etc_node = root_path_node.insert_child_node(PathNode::make_virtual_node("etc", PathNode::VISIBLE));
+    // Visible file inside a visible folder -> should succeed
+    PathNode &fstab_node = etc_node.insert_child_node(PathNode::make_host_node("fstab", PathNode::HOST_FILE, "/etc/fstab", PathNode::VISIBLE));
+    // Hidden file inside a visible folder -> should fail
+    PathNode &passwd_node = etc_node.insert_child_node(PathNode::make_host_node("passwd", PathNode::HOST_FILE, "/etc/passwd", PathNode::HIDDEN));
+
+
+    PathNode &root_node = root_path_node.insert_child_node(PathNode::make_virtual_node("root", PathNode::HIDDEN, {
         // Visible file inside a hidden folder -> should fail
         {PathNode::make_host_node("test1", PathNode::HOST_FILE, "/root/test1", PathNode::VISIBLE)},
         // Hidden file inside a hidden folder -> should fail
         {PathNode::make_host_node("test2", PathNode::HOST_FILE, "/root/toto/test2", PathNode::HIDDEN)}
-    });
-    PathNode tmp_node = PathNode::make_host_node("tmp", PathNode::HOST_FOLDER, "/tmp", PathNode::VISIBLE);
-    PathNode opt_node = PathNode::make_host_node("opt", PathNode::HOST_FOLDER, "/opt", PathNode::HIDDEN);
-    std::vector<PathNode> root_nodes = {
-        home_node,
-        etc_node,
-        root_node,
-        // Visible folder -> should succeed for the folder and anything inside it
-        tmp_node,
-        // Hidden folder -> should fail for the folder and anything inside it
-        opt_node,
-    };
+    }));
+    PathNode &tmp_node = root_path_node.insert_child_node(PathNode::make_host_node("tmp", PathNode::HOST_FOLDER, "/tmp", PathNode::VISIBLE));
+    PathNode &opt_node = root_path_node.insert_child_node(PathNode::make_host_node("opt", PathNode::HOST_FOLDER, "/opt", PathNode::HIDDEN));
 
-    FileMapping mapping(root_nodes);
 
     assert(mapping.find_virtual_node("//fsp/non-existent/path").has_value() == false);
     assert(mapping.find_virtual_node("//fsp/home/") == home_node);
