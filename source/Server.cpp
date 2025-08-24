@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Fri Aug 22 23:57:25 2025 Francois Michaut
+** Last update Sun Aug 24 20:16:50 2025 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -228,7 +228,7 @@ namespace FileShare {
 
     auto Server::default_endpoint() -> std::shared_ptr<CppSockets::IEndpoint> {
         // TODO: choose a better port than 12345
-        return std::make_shared<CppSockets::EndpointV4>(CppSockets::IPv4("127.0.0.1"), 12345);
+        return std::make_shared<CppSockets::EndpointV4>(CppSockets::IPv4("0.0.0.0"), 12345);
     }
 
     void Server::accept_peer(PreAuthPeer_ptr peer, bool temporary_trust) {
