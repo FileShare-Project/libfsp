@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Aug  6 15:19:24 2025 Francois Michaut
-** Last update Fri Aug 22 20:42:47 2025 Francois Michaut
+** Last update Sun Aug 24 19:48:12 2025 Francois Michaut
 **
 ** ServerConfig.cpp : Server Configuration Implementation
 */
@@ -24,6 +24,7 @@ const char * const DEFAULT_PATH = "~/.fsp/server_config";
 
 namespace FileShare {
     ServerConfig::ServerConfig() :
+        m_filepath(FileShare::Utils::resolve_home_component(DEFAULT_PATH)),
         m_uuid("0000-0000-0000-0000") // TODO: Generate Random UUID
     {}
 
@@ -59,6 +60,8 @@ namespace FileShare {
         std::ifstream file(config.m_filepath, std::ios_base::binary | std::ios_base::in);
         cereal::BinaryInputArchive archive(file);
 
+        // TODO: Will crash if file doesn't exist. Do we want to create it ?
+        // It could also be an error if the config is missing -> TBD
         archive(config);
         // TODO: Need to validate config - if someone messes up the file, we could have problems
         // (Or if private_keys_dir contains ~, it needs to be expanded)

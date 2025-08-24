@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:29:35 2022 Francois Michaut
-** Last update Fri Aug 22 20:39:00 2025 Francois Michaut
+** Last update Sun Aug 24 19:46:07 2025 Francois Michaut
 **
 ** FileShareConfig.cpp : FileShareConfig implementation
 */
@@ -22,12 +22,11 @@
 const char * const DEFAULT_PATH = "~/.fsp/default_config";
 
 namespace FileShare {
-    Config::Config() {
-        if (m_downloads_folder.empty()) {
-            // TODO: replace by cross-plateform way of getting the dowloads folder
-            m_downloads_folder = FileShare::Utils::resolve_home_component("~/Downloads/FileShare");
-        }
-    }
+    Config::Config() :
+        m_filepath(FileShare::Utils::resolve_home_component(DEFAULT_PATH)),
+        // TODO: replace by cross-plateform way of getting the dowloads folder
+        m_downloads_folder(FileShare::Utils::resolve_home_component("~/Downloads/FileShare"))
+    {}
 
     Config::Config(bool /*_*/) {}
 
