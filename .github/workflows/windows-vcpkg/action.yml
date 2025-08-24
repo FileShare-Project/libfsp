@@ -1,0 +1,40 @@
+name: Windows VCPKG
+
+inputs:
+  key:
+    required: true
+    type: string
+  vcpkg_path:
+    type: string
+    default: ".\\"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set Env
+      shell: powershell
+      run: |
+        echo "VCPKG_ROOT=${env:VCPKG_INSTALLATION_ROOT}" | Out-File -FilePath $env:GITHUB_ENV -Append
+        echo "VCPKG_CACHE=${env:LOCALAPPDATA}\vcpkg\archives" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+    - name: Fetch VCPKG Cache (Windows)
+      id: fetch-vcpkg-cache
+      if: runner.os == 'Windows'
+      uses: actions/cache/restore@v4
+      with:
+        key: ${{ inputs.key }}-vcpkg-${{ hashFiles(format('{0}\vcpkg.json', inputs.vcpkg_path)) }}
+        path: ${{ env.VCPKG_CACHE }}
+
+    - name: VCPKG Install (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        echo "CMAKE_TOOLCHAIN_FILE=${env:VCPKG_ROOT}\scripts\buildsystems\vcpkg.cmake" | Out-File -FilePath $env:GITHUB_ENV -Append
+        vcpkg install --x-manifest-root="${{ inputs.vcpkg_path }}"
+
+    - name: Always Save VCPKG Cache (Windows)
+      if: always() && runner.os == 'Windows' && steps.fetch-vcpkg-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        key: ${{ steps.fetch-vcpkg-cache.outputs.cache-primary-key }}
+        path: ${{ env.VCPKG_CACHE }}

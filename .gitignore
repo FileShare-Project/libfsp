@@ -1,7 +1,12 @@
 build/
 
+libfsp.so
 compile_commands.json
 
 *.tmp
 *.gch
+*.pch
 vgcore.*
+
+.vscode/
+.cache/

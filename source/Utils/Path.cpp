@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Oct 13 19:09:01 2022 Francois Michaut
-** Last update Thu Nov 23 09:05:00 2023 Francois Michaut
+** Last update Wed Aug  6 22:32:34 2025 Francois Michaut
 **
 ** Path.cpp : Implementation of utilities to manpulate paths in a cross plateform way
 */
@@ -25,7 +25,7 @@
 #endif
 
 namespace FileShare::Utils {
-    std::filesystem::path home_directoy(const std::string &user) {
+    auto home_directoy(const std::string &user) -> std::filesystem::path {
         std::string res;
         char *home = nullptr;
 
@@ -56,6 +56,7 @@ namespace FileShare::Utils {
             }
         }
 #else
+        // TODO: Make Threadsafe + Cache env + passwd entry
         if (user.empty()) {
             home = std::getenv("HOME");
         }
@@ -77,16 +78,16 @@ namespace FileShare::Utils {
         return res;
     }
 
-    std::filesystem::path home_directoy() {
+    auto home_directoy() -> std::filesystem::path {
         static std::filesystem::path home = home_directoy("");
 
         return home;
     }
 
-    std::filesystem::path resolve_home_component(const std::filesystem::path &path) {
+    auto resolve_home_component(const std::filesystem::path &path) -> std::filesystem::path {
         auto str = path.generic_string();
 
-        if (str.find('~') != 0)
+        if (!str.starts_with('~'))
             return path;
         auto pos = str.find('/');
         auto home = pos == 1 ? home_directoy() : home_directoy(str.substr(1, (pos == std::string::npos ? pos : pos - 1)));
@@ -98,21 +99,21 @@ namespace FileShare::Utils {
         return home / str.substr(pos + 1);
     }
 
-    std::vector<std::filesystem::path> resolve_home_components(const std::vector<std::filesystem::path> &paths) {
+    auto resolve_home_components(const std::vector<std::filesystem::path> &paths) -> std::vector<std::filesystem::path> {
         std::vector<std::filesystem::path> result;
 
         result.reserve(paths.size());
-        for (auto &path : paths) {
+        for (const auto &path : paths) {
             result.emplace_back(resolve_home_component(path));
         }
         return result;
     }
 
-    bool path_contains_folder(const std::filesystem::path &path, const std::filesystem::path &folder) {
+    auto path_contains_folder(const std::filesystem::path &path, const std::filesystem::path &folder) -> bool {
         return find_folder_in_path(path, folder) != path.end();
     }
 
-    std::filesystem::path::iterator find_folder_in_path(const std::filesystem::path &path, const std::filesystem::path &folder) {
+    auto find_folder_in_path(const std::filesystem::path &path, const std::filesystem::path &folder) -> std::filesystem::path::iterator {
         auto path_iter = path.begin();
         auto folder_iter = folder.begin();
 

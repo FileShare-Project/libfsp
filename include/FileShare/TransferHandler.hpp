@@ -4,12 +4,12 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 24 08:51:14 2023 Francois Michaut
-** Last update Sat Dec  9 08:49:52 2023 Francois Michaut
+** Last update Sat Aug 23 11:26:19 2025 Francois Michaut
 **
 ** TransferHandler.hpp : Classes to handle the file transfers
 */
 
-#include "FileShare/Config.hpp"
+#include "FileShare/Config/FileMapping.hpp"
 #include "FileShare/Protocol/RequestData.hpp"
 
 #include <fstream>
@@ -17,14 +17,23 @@
 namespace FileShare {
     class ITransferHandler {
         public:
-            virtual bool finished() const = 0;
+            virtual ~ITransferHandler() = default;
+
+            ITransferHandler() = default;
+
+            ITransferHandler(const ITransferHandler &) = default;
+            ITransferHandler(ITransferHandler &&) = default;
+            auto operator=(const ITransferHandler &) -> ITransferHandler & = default;
+            auto operator=(ITransferHandler &&) -> ITransferHandler & = default;
+
+            [[nodiscard]] virtual auto finished() const -> bool = 0;
     };
 
     class IFileTransferHandler : public ITransferHandler {
         public:
-            std::size_t get_current_size() const;
-            std::size_t get_total_size() const;
-            std::shared_ptr<Protocol::SendFileData> get_original_request() const;
+            [[nodiscard]] auto get_current_size() const -> std::size_t;
+            [[nodiscard]] auto get_total_size() const -> std::size_t;
+            [[nodiscard]] auto get_original_request() const -> std::shared_ptr<Protocol::SendFileData>;
         protected:
             std::size_t m_transferred_size = 0;
             std::shared_ptr<Protocol::SendFileData> m_original_request;
@@ -33,15 +42,16 @@ namespace FileShare {
     class DownloadTransferHandler : public IFileTransferHandler {
         public:
             DownloadTransferHandler(std::string destination_filename, std::shared_ptr<Protocol::SendFileData> original_request);
-            virtual ~DownloadTransferHandler() = default;
+            ~DownloadTransferHandler() override = default;
 
             void receive_packet(const Protocol::DataPacketData &data);
 
-            bool finished() const override;
+            bool m_keep = false; // TODO HACK: find a REAL solution
+
+            auto finished() const -> bool override;
         private:
             void finish_transfer();
 
-        private:
             std::string m_filename;
 
             std::string m_temp_filename;
@@ -52,15 +62,15 @@ namespace FileShare {
 
     class UploadTransferHandler : public IFileTransferHandler {
         public:
-            UploadTransferHandler(std::string filepath, std::shared_ptr<Protocol::SendFileData> original_request, std::size_t packet_start);
+            UploadTransferHandler(const std::string &filepath, std::shared_ptr<Protocol::SendFileData> original_request, std::size_t packet_start);
             UploadTransferHandler(UploadTransferHandler &&other) noexcept = default;
-            virtual ~UploadTransferHandler() = default;
+            ~UploadTransferHandler() override = default;
 
-            UploadTransferHandler &operator=(UploadTransferHandler &&other) noexcept = default;
+            auto operator=(UploadTransferHandler &&other) noexcept -> UploadTransferHandler & = default;
 
-            std::shared_ptr<Protocol::DataPacketData> get_next_packet(Protocol::MessageID original_request_id);
+            auto get_next_packet(Protocol::MessageID original_request_id) -> std::shared_ptr<Protocol::DataPacketData>;
 
-            bool finished() const override;
+            auto finished() const -> bool override;
         private:
             std::size_t m_packet_id = 0;
             std::ifstream m_file;
@@ -69,18 +79,18 @@ namespace FileShare {
     class ListFilesTransferHandler : public ITransferHandler {
         public:
             ListFilesTransferHandler(std::filesystem::path requested_path, FileMapping &file_mapping, std::size_t packet_size);
-            virtual ~ListFilesTransferHandler() = default;
+            ~ListFilesTransferHandler() override = default;
 
-            std::shared_ptr<Protocol::FileListData> get_next_packet(Protocol::MessageID original_request_id);
+            auto get_next_packet(Protocol::MessageID original_request_id) -> std::shared_ptr<Protocol::FileListData>;
 
-            bool finished() const override;
+            [[nodiscard]] auto finished() const -> bool override;
         private:
             std::filesystem::path m_requested_path;
             FileMapping &m_file_mapping;
             std::optional<PathNode> m_path_node;
 
             std::filesystem::directory_iterator m_directory_iterator;
-            PathNode::NodeMap::iterator m_node_iterator;
+            PathNode::NodeMap::const_iterator m_node_iterator;
 
             std::size_t m_packet_size;
             std::size_t m_current_id = 0;
@@ -90,12 +100,12 @@ namespace FileShare {
     class FileListTransferHandler : public ITransferHandler {
         public:
             FileListTransferHandler() = default;
-            virtual ~FileListTransferHandler() = default;
+            ~FileListTransferHandler() override = default;
 
             void receive_packet(Protocol::FileListData data);
 
-            bool finished() const override;
-            [[nodiscard]] const std::vector<Protocol::FileInfo> &get_file_list() const;
+            [[nodiscard]] auto finished() const -> bool override;
+            [[nodiscard]] auto get_file_list() const -> const std::vector<Protocol::FileInfo> & { return m_file_list; }
         private:
             std::vector<Protocol::FileInfo> m_file_list;
 

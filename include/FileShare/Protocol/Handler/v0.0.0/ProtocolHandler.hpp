@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri May  5 21:32:03 2023 Francois Michaut
-** Last update Sat Dec  9 08:59:02 2023 Francois Michaut
+** Last update Fri Aug 15 13:48:49 2025 Francois Michaut
 **
 ** ProtocolHandler.hpp : ProtocolHandler for the v0.0.0 of the protocol
 */
@@ -14,35 +14,35 @@
 #include "FileShare/Protocol/Protocol.hpp"
 #include "FileShare/Protocol/RequestData.hpp"
 
-namespace FileShare::Protocol::Handler::v0_0_0 {
+namespace FileShare::Protocol::Handler::v0_0_0 { // NOLINT(readability-identifier-naming)
     class ProtocolHandler : public IProtocolHandler {
         public:
-            virtual ~ProtocolHandler() = default;
+            ~ProtocolHandler() override = default;
 
-            std::string format_send_file(std::uint8_t message_id, const SendFileData &data) override;
-            std::string format_receive_file(std::uint8_t message_id, const ReceiveFileData &data) override;
-            std::string format_list_files(std::uint8_t message_id, const ListFilesData &data) override;
+            auto format_send_file(std::uint8_t message_id, const SendFileData &data) -> std::string override;
+            auto format_receive_file(std::uint8_t message_id, const ReceiveFileData &data) -> std::string override;
+            auto format_list_files(std::uint8_t message_id, const ListFilesData &data) -> std::string override;
 
-            std::string format_file_list(std::uint8_t message_id, const FileListData &data) override;
-            std::string format_data_packet(std::uint8_t message_id, const DataPacketData &data) override;
-            std::string format_ping(std::uint8_t message_id, const PingData &data) override;
+            auto format_file_list(std::uint8_t message_id, const FileListData &data) -> std::string override;
+            auto format_data_packet(std::uint8_t message_id, const DataPacketData &data) -> std::string override;
+            auto format_ping(std::uint8_t message_id, const PingData &data) -> std::string override;
 
-            std::string format_response(std::uint8_t message_id, const ResponseData &data) override;
+            auto format_response(std::uint8_t message_id, const ResponseData &data) -> std::string override;
 
-            std::string format_request(const Request &request) override;
-            std::size_t parse_request(std::string_view raw_msg, Request &out) override;
+            auto format_request(const Request &request) -> std::string override;
+            auto parse_request(std::string_view raw_msg, Request &out) -> std::size_t override;
         private:
-            const static std::size_t packet_size = 4096; // TODO experiment with this
-            const static std::size_t base_header_size = 6;
+            constexpr static std::size_t PACKET_SIZE = 4096; // TODO experiment with this
+            constexpr static std::size_t BASE_HEADER_SIZE = 6;
 
-            std::shared_ptr<IRequestData> get_request_data(CommandCode cmd, std::string_view payload);
+            auto get_request_data(CommandCode cmd, std::string_view payload) -> std::shared_ptr<IRequestData>;
 
-            std::shared_ptr<IRequestData> parse_response(std::string_view payload);
-            std::shared_ptr<IRequestData> parse_send_file(std::string_view payload);
-            std::shared_ptr<IRequestData> parse_receive_file(std::string_view payload);
-            std::shared_ptr<IRequestData> parse_list_files(std::string_view payload);
-            std::shared_ptr<IRequestData> parse_file_list(std::string_view payload);
-            std::shared_ptr<IRequestData> parse_data_packet(std::string_view payload);
-            std::shared_ptr<IRequestData> parse_ping(std::string_view payload);
+            auto parse_response(std::string_view payload) -> std::shared_ptr<IRequestData>;
+            auto parse_send_file(std::string_view payload) -> std::shared_ptr<IRequestData>;
+            auto parse_receive_file(std::string_view payload) -> std::shared_ptr<IRequestData>;
+            auto parse_list_files(std::string_view payload) -> std::shared_ptr<IRequestData>;
+            auto parse_file_list(std::string_view payload) -> std::shared_ptr<IRequestData>;
+            auto parse_data_packet(std::string_view payload) -> std::shared_ptr<IRequestData>;
+            auto parse_ping(std::string_view payload) -> std::shared_ptr<IRequestData>;
     };
 }

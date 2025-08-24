@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue May  9 11:13:37 2023 Francois Michaut
-** Last update Tue Jul 18 22:02:26 2023 Francois Michaut
+** Last update Fri Aug 22 23:19:33 2025 Francois Michaut
 **
 ** FileDescriptor.cpp : Helper wrapper class to auto close file descriptor
 */
@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <utility>
 
 #include <fcntl.h>
 #include <string.h>
@@ -23,7 +24,7 @@
 
 namespace FileShare::Utils {
     FileHandleBase::FileHandleBase(std::string filename) :
-        m_filename(filename)
+        m_filename(std::move(filename))
     {}
 
     void FileHandleBase::report_error(const char *action, bool raise) const {
@@ -33,10 +34,11 @@ namespace FileShare::Utils {
         if (!m_filename.empty())
             oss << " '" << m_filename << '\'';
         oss << ": " << strerror(errno);
-        if (raise)
+        if (raise) {
             throw std::runtime_error(oss.str());
-        else
-            std::cerr << oss.str() << std::endl;
+        }
+
+        std::cerr << oss.str() << std::endl;
     }
 
 #ifndef OS_WINDOWS
@@ -94,6 +96,7 @@ namespace FileShare::Utils {
             report_error("close", false);
         }
     }
+
 #ifndef OS_WINDOWS
     int FileHandle::fd(bool raise) const {
         if (m_fd == -1) {

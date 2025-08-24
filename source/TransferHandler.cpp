@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 24 19:36:36 2023 Francois Michaut
-** Last update Sat Dec  9 09:03:46 2023 Francois Michaut
+** Last update Sat Aug 23 11:16:50 2025 Francois Michaut
 **
 ** TransferHandler.cpp : Implementation of classes to handle the file transfers
 */
@@ -15,6 +15,8 @@
 #include <algorithm>
 
 namespace FileShare {
+    // TODO: make download transfer handler return a STATUS instead.
+    // Can return status::up_to_date for instance, avoid handling this with exceptions
     DownloadTransferHandler::DownloadTransferHandler(std::string destination_filename, std::shared_ptr<Protocol::SendFileData> original_request) :
         m_filename(std::move(destination_filename)), m_temp_filename(m_filename + ".fsdownload")
     {
@@ -22,17 +24,18 @@ namespace FileShare {
         if (std::filesystem::exists(m_temp_filename)) {
             // TODO: read from it and restart from where we left off
             throw Errors::Transfer::UpToDateError(m_temp_filename);
-        } else if(std::filesystem::exists(m_filename) && Utils::file_hash(m_original_request->hash_algorithm, m_filename) == m_original_request->filehash) {
+        }
+        if(std::filesystem::exists(m_filename) && Utils::file_hash(m_original_request->hash_algorithm, m_filename) == m_original_request->filehash) {
             // file is already up to date, don't need to download it again
             throw Errors::Transfer::UpToDateError(m_filename);
-        } else {
-            std::filesystem::create_directories(std::filesystem::path(m_temp_filename).parent_path());
-            m_file.open(m_temp_filename, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
         }
+
+        std::filesystem::create_directories(std::filesystem::path(m_temp_filename).parent_path());
+        m_file.open(m_temp_filename, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
     }
 
     void DownloadTransferHandler::receive_packet(const Protocol::DataPacketData &data) {
-        auto missing = std::find(m_missing_ids.begin(), m_missing_ids.end(), data.packet_id);
+        auto missing = std::ranges::find(m_missing_ids, data.packet_id);
 
         if (missing != m_missing_ids.end())
             m_missing_ids.erase(missing);
@@ -63,7 +66,7 @@ namespace FileShare {
         } else { // data.packet_id == m_expected_id
             bool last_packet;
 
-            // TODO: this breaks with files of size 0
+            // TODO FIXME: this breaks with files of size 0
             m_expected_id++; // Increment before comparaison, cause if we need 2 total packets, we will receive ids 0 and 1.
             last_packet = m_expected_id == m_original_request->total_packets;
 
@@ -71,7 +74,8 @@ namespace FileShare {
             if (data.data.size() != m_original_request->packet_size && !last_packet) {
                 // TODO: something is wrong if this happens -> figure out what to do.
                 throw std::runtime_error("Transfert size invalid");
-            } else if (last_packet && m_missing_ids.empty()) {
+            }
+            if (last_packet && m_missing_ids.empty()) {
                 finish_transfer();
             }
         }
@@ -87,26 +91,26 @@ namespace FileShare {
         }
     }
 
-    bool DownloadTransferHandler::finished() const {
+    auto DownloadTransferHandler::finished() const -> bool {
         return !m_file.is_open();
     }
 
-    std::size_t IFileTransferHandler::get_current_size() const {
+    auto IFileTransferHandler::get_current_size() const -> std::size_t {
         // TODO: this is not exact : last packet might have a smaller size
         // return m_expected_id * m_original_request->packet_size;
         return m_transferred_size;
     }
 
-    std::size_t IFileTransferHandler::get_total_size() const {
+    auto IFileTransferHandler::get_total_size() const -> std::size_t {
         // TODO: this is not exact : last packet might have a smaller size
         return m_original_request->total_packets * m_original_request->packet_size;
     }
 
-    std::shared_ptr<Protocol::SendFileData> IFileTransferHandler::get_original_request() const {
+    auto IFileTransferHandler::get_original_request() const -> std::shared_ptr<Protocol::SendFileData> {
         return m_original_request;
     }
 
-    UploadTransferHandler::UploadTransferHandler(std::string filepath, std::shared_ptr<Protocol::SendFileData> original_request, std::size_t packet_start) {
+    UploadTransferHandler::UploadTransferHandler(const std::string &filepath, std::shared_ptr<Protocol::SendFileData> original_request, std::size_t packet_start) {
         m_original_request = std::move(original_request);
         m_file.open(filepath);
         // TODO: this won't raise on fail to open / fail to seek (need failibt, but failbit would raise if EOF while reading...)
@@ -114,7 +118,8 @@ namespace FileShare {
         m_file.seekg(m_original_request->packet_size * packet_start);
     }
 
-    std::shared_ptr<Protocol::DataPacketData> UploadTransferHandler::get_next_packet(Protocol::MessageID original_request_id) {
+    // TODO: Do we really need shared_ptrs for the transfer packets ?
+    auto UploadTransferHandler::get_next_packet(Protocol::MessageID original_request_id) -> std::shared_ptr<Protocol::DataPacketData> {
         std::vector<char> buffer;
         std::string data;
         std::shared_ptr<Protocol::DataPacketData> data_packet_data;
@@ -134,7 +139,7 @@ namespace FileShare {
         return data_packet_data;
     }
 
-    bool UploadTransferHandler::finished() const {
+    auto UploadTransferHandler::finished() const -> bool {
         return !m_file.is_open();
     }
 
@@ -150,7 +155,7 @@ namespace FileShare {
             return;
         }
         if (m_path_node->is_host_folder()) {
-            std::filesystem::path host_path = m_file_mapping.virtual_to_host(m_requested_path, m_path_node, out);
+            std::filesystem::path host_path = FileShare::FileMapping::virtual_to_host(m_requested_path, m_path_node, out);
 
             if (!host_path.empty()) {
                 m_directory_iterator = std::filesystem::directory_iterator(host_path);
@@ -160,7 +165,7 @@ namespace FileShare {
         }
     }
 
-    std::shared_ptr<Protocol::FileListData> ListFilesTransferHandler::get_next_packet(Protocol::MessageID original_request_id) {
+    auto ListFilesTransferHandler::get_next_packet(Protocol::MessageID original_request_id) -> std::shared_ptr<Protocol::FileListData> {
         if (m_extra_packet_sent || !m_path_node.has_value()) {
             return nullptr;
         }
@@ -176,7 +181,7 @@ namespace FileShare {
                     auto filepath = m_requested_path / m_directory_iterator->path().filename();
                     auto file_type = m_directory_iterator->is_directory() ? Protocol::FileType::DIRECTORY : Protocol::FileType::FILE;
 
-                    vector.emplace_back(Protocol::FileInfo{filepath.string(), file_type});
+                    vector.emplace_back(Protocol::FileInfo{.path=filepath.string(), .file_type=file_type});
                     m_directory_iterator++;
                 }
                 break;
@@ -190,7 +195,7 @@ namespace FileShare {
                 if (entry.is_directory()) {
                     break; // It's supposed to be a file, abort
                 }
-                vector.emplace_back(Protocol::FileInfo{m_requested_path.string(), Protocol::FileType::FILE});
+                vector.emplace_back(Protocol::FileInfo{.path=m_requested_path.string(), .file_type=Protocol::FileType::FILE});
                 break;
             }
             case PathNode::VIRTUAL: {
@@ -200,7 +205,7 @@ namespace FileShare {
                     const PathNode &node = m_node_iterator->second;
                     auto file_type = node.is_host_file() ? Protocol::FileType::FILE : Protocol::FileType::DIRECTORY;
 
-                    vector.emplace_back(Protocol::FileInfo{(m_requested_path / node.get_name()).string(), file_type});
+                    vector.emplace_back(Protocol::FileInfo{.path=(m_requested_path / node.get_name()).string(), .file_type=file_type});
                     m_node_iterator++;
                 }
                 break;
@@ -208,13 +213,14 @@ namespace FileShare {
         }
         auto request = std::make_shared<Protocol::FileListData>(original_request_id, m_current_id++, std::move(vector));
 
+        // TODO: Can we get rid of the extra empty packet ?
         if (request->files.empty()) {
             m_extra_packet_sent = true;
         }
         return request;
     }
 
-    bool ListFilesTransferHandler::finished() const {
+    auto ListFilesTransferHandler::finished() const -> bool {
         if (!m_path_node.has_value())
             return true;
         switch (m_path_node->get_type()) {
@@ -233,7 +239,7 @@ namespace FileShare {
                 m_missing_ids.push_back(m_current_id++);
             }
         } else if (data.packet_id < m_current_id) {
-            auto iter = std::find(m_missing_ids.begin(), m_missing_ids.end(), data.packet_id);
+            auto iter = std::ranges::find(m_missing_ids, data.packet_id);
 
             if (iter != m_missing_ids.end()) {
                 m_missing_ids.erase(iter);
@@ -250,9 +256,7 @@ namespace FileShare {
         }
     }
 
-    bool FileListTransferHandler::finished() const {
+    auto FileListTransferHandler::finished() const -> bool {
         return m_missing_ids.empty() && m_finished;
     }
-
-    [[nodiscard]] const std::vector<Protocol::FileInfo> &FileListTransferHandler::get_file_list() const { return m_file_list; }
 }

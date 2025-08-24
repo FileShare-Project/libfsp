@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue May  9 09:33:48 2023 Francois Michaut
-** Last update Thu Aug 24 19:34:07 2023 Francois Michaut
+** Last update Fri Aug 15 13:46:20 2025 Francois Michaut
 **
 ** MessageQueue.hpp : A queue representing the messages sent/received and their status
 */
@@ -27,23 +27,26 @@ namespace FileShare {
 
     class MessageQueue {
         public:
-            using MessageMap = std::unordered_map<std::uint8_t, Message>;
+            using MessageMap = std::unordered_map<Protocol::MessageID, Message>;
+
+            static constexpr Protocol::MessageID MAX_ID = 0xFF;
 
             MessageQueue() = default;
 
-            std::uint8_t available_send_slots() const;
+            auto available_send_slots() const -> std::uint8_t { return m_available_send_slots; }
 
-            std::uint8_t send_request(Protocol::Request request); // append to m_outgoing_requests
-            std::uint8_t receive_request(Protocol::Request request); // append to m_incomming_requests
-            void send_reply(std::uint8_t request_id, Protocol::StatusCode status_code);
-            void receive_reply(std::uint8_t request_id, Protocol::StatusCode status_code);
+            auto send_request(Protocol::Request request) -> Protocol::MessageID; // append to m_outgoing_requests
+            auto receive_request(Protocol::Request request) -> Protocol::MessageID; // append to m_incomming_requests
+            void send_reply(Protocol::MessageID request_id, Protocol::StatusCode status_code);
+            void receive_reply(Protocol::MessageID request_id, Protocol::StatusCode status_code);
 
-            const MessageMap &get_outgoing_requests() const;
-            const MessageMap &get_incomming_requests() const;
+            auto get_outgoing_requests() const -> const MessageMap & { return m_outgoing_requests; }
+            auto get_incomming_requests() const -> const MessageMap & { return m_incomming_requests; }
+
         private:
-            std::uint8_t m_message_id = 0;
+            Protocol::MessageID m_message_id = 0;
             MessageMap m_outgoing_requests;
             MessageMap m_incomming_requests;
-            std::uint8_t m_available_send_slots = 0xFF;
+            std::uint8_t m_available_send_slots = MAX_ID;
     };
 }

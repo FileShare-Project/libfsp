@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Aug 22 18:25:07 2023 Francois Michaut
-** Last update Thu Nov  9 09:02:38 2023 Francois Michaut
+** Last update Fri Aug 15 14:36:03 2025 Francois Michaut
 **
 ** MessageQueue.cpp : Implementation of the queue representing the messages sent/received and their status
 */
@@ -14,7 +14,7 @@
 #include <stdexcept>
 
 namespace FileShare {
-    std::uint8_t MessageQueue::send_request(Protocol::Request request) {
+    auto MessageQueue::send_request(Protocol::Request request) -> Protocol::MessageID {
         if (m_available_send_slots == 0) {
             throw std::runtime_error("No more available slots");
         }
@@ -22,14 +22,15 @@ namespace FileShare {
 
         while (m_outgoing_requests.contains(m_message_id)) {
             auto status = m_outgoing_requests.at(m_message_id).status;
+
+            // If there is a status already, this is an old request, we can replace it
+            // Except for APPROVAL_PENDING, since we are waiting for an anwser
             if (status.has_value() && status.value() != Protocol::StatusCode::APPROVAL_PENDING) {
-                // If there is a status already, this is an old request, we can replace it
-                // Except for APPROVAL_PENDING, since we are waiting for an anwser
                 // NOTE: Not vulnerable to DOS attack, since peer would only be able to DOS
-                // itself if it fills message_queue with APPROVAL_PENDING
+                // its own connection if it fills our message_queue with APPROVAL_PENDING
                 break;
             }
-            if (m_message_id == 255) {
+            if (m_message_id == MAX_ID) {
                 m_message_id = 0;
             } else {
                 m_message_id++;
@@ -40,18 +41,20 @@ namespace FileShare {
         return m_message_id++; // Will return value before incrementation
     }
 
-    std::uint8_t MessageQueue::receive_request(Protocol::Request request) {
-        std::uint8_t message_id = request.message_id;
+    auto MessageQueue::receive_request(Protocol::Request request) -> Protocol::MessageID {
+        Protocol::MessageID message_id = request.message_id;
 
+        // TODO: Peer could override its own requests, make sure that doesn't break things
         m_incomming_requests[message_id] = Message{std::move(request), {}, ""};
         return message_id;
     }
 
-    void MessageQueue::send_reply(std::uint8_t request_id, Protocol::StatusCode status_code) {
+    void MessageQueue::send_reply(Protocol::MessageID request_id, Protocol::StatusCode status_code) {
         m_incomming_requests.at(request_id).status = status_code;
     }
 
-    void MessageQueue::receive_reply(std::uint8_t request_id, Protocol::StatusCode status_code) {
+    void MessageQueue::receive_reply(Protocol::MessageID request_id, Protocol::StatusCode status_code) {
+        // TODO: Will throw if peer sends an invalid reply
         auto &request = m_outgoing_requests.at(request_id);
         bool is_approval_pending = false;
         bool has_value = request.status.has_value();
@@ -72,17 +75,5 @@ namespace FileShare {
             m_available_send_slots++;
         }
         request.status = status_code;
-    }
-
-    std::uint8_t MessageQueue::available_send_slots() const {
-        return m_available_send_slots;
-    }
-
-    const MessageQueue::MessageMap &MessageQueue::get_outgoing_requests() const {
-        return m_outgoing_requests;
-    }
-
-    const MessageQueue::MessageMap &MessageQueue::get_incomming_requests() const {
-        return m_incomming_requests;
     }
 }

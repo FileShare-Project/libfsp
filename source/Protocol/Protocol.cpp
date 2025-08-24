@@ -4,18 +4,21 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Aug 25 23:16:42 2022 Francois Michaut
-** Last update Sat Nov 11 17:33:45 2023 Francois Michaut
+** Last update Fri Aug 22 23:17:35 2025 Francois Michaut
 **
 ** Protocol.cpp : Implementation of the main Protocol class
 */
 
 #include "FileShare/Protocol/Protocol.hpp"
+#include "FileShare/Protocol/Definitions.hpp"
 #include "FileShare/Protocol/Handler/v0.0.0/ProtocolHandler.hpp"
+#include "FileShare/Utils/Strings.hpp"
 
+#include <string_view>
 #include <unordered_map>
 
 namespace FileShare::Protocol {
-    std::map<Version, std::shared_ptr<IProtocolHandler>> Protocol::protocol_list = {
+    const std::map<Version, std::shared_ptr<IProtocolHandler>> Protocol::PROTOCOL_LIST = {
         {Version::v0_0_0, std::make_shared<Handler::v0_0_0::ProtocolHandler>()}
     };
 
@@ -30,16 +33,16 @@ namespace FileShare::Protocol {
     {}
 
     void Protocol::set_version(Version version) {
-        auto iter = protocol_list.find(version);
+        auto iter = PROTOCOL_LIST.find(version);
 
-        if (iter == protocol_list.end()) {
+        if (iter == PROTOCOL_LIST.end()) {
             throw std::runtime_error("Unsuported protocol version");
         }
         m_handler = iter->second;
     }
 
-    CommandCode str_to_command(std::string str) {
-        static std::unordered_map<std::string, CommandCode> str_to_command = {
+    auto str_to_command(std::string_view str) -> CommandCode {
+        const static std::unordered_map<std::string, CommandCode, FileShare::Utils::string_hash, std::equal_to<>> str_to_command = {
             {"RESPONSE", CommandCode::RESPONSE},
 
             {"SEND_FILE", CommandCode::SEND_FILE},
@@ -63,8 +66,8 @@ namespace FileShare::Protocol {
         throw std::runtime_error("Unknown command");
     }
 
-    StatusCode str_to_status(std::string str) {
-        static std::unordered_map<std::string, StatusCode> str_to_status = {
+    auto str_to_status(std::string_view str) -> StatusCode {
+        const static std::unordered_map<std::string, StatusCode, FileShare::Utils::string_hash, std::equal_to<>> str_to_status = {
             {"STATUS_OK", StatusCode::STATUS_OK},
             {"UP_TO_DATE", StatusCode::UP_TO_DATE},
             {"MESSAGE_TOO_LONG", StatusCode::MESSAGE_TOO_LONG},
@@ -87,8 +90,22 @@ namespace FileShare::Protocol {
         throw std::runtime_error("Unknown status");
     }
 
-    std::string command_to_str(CommandCode command) {
-        static std::unordered_map<CommandCode, const char *> command_to_str = {
+    auto str_to_file_type(std::string_view str) -> FileType {
+        const static std::unordered_map<std::string, FileType, FileShare::Utils::string_hash, std::equal_to<>> str_to_file_type = {
+            {"FILE", FileType::FILE},
+            {"DIRECTORY", FileType::DIRECTORY},
+        };
+
+        auto iter = str_to_file_type.find(str);
+
+        if (iter != str_to_file_type.end()) {
+            return iter->second;
+        }
+        throw std::runtime_error("Unknown FileType");
+    }
+
+    auto command_to_str(CommandCode command) -> std::string_view {
+        const static std::unordered_map<CommandCode, const char *> command_to_str = {
             {CommandCode::RESPONSE, "RESPONSE"},
 
             {CommandCode::SEND_FILE, "SEND_FILE"},
@@ -113,14 +130,15 @@ namespace FileShare::Protocol {
         return "__UNKNOWN_COMMAND__";
     }
 
-    std::string status_to_str(StatusCode status) {
-        static std::unordered_map<StatusCode, const char *> status_to_str = {
+    auto status_to_str(StatusCode status) -> std::string_view {
+        const static std::unordered_map<StatusCode, const char *> status_to_str = {
             {StatusCode::STATUS_OK, "STATUS_OK"},
             {StatusCode::UP_TO_DATE, "UP_TO_DATE"},
             {StatusCode::MESSAGE_TOO_LONG, "MESSAGE_TOO_LONG"},
             {StatusCode::APPROVAL_PENDING, "APPROVAL_PENDING"},
 
             {StatusCode::BAD_REQUEST, "BAD_REQUEST"},
+            {StatusCode::UNAUTHORIZED, "UNAUTHORIZED"},
             {StatusCode::INVALID_REQUEST_ID, "INVALID_REQUEST_ID"},
             {StatusCode::FORBIDDEN, "FORBIDDEN"},
             {StatusCode::FILE_NOT_FOUND, "FILE_NOT_FOUND"},
@@ -138,17 +156,36 @@ namespace FileShare::Protocol {
 
         return "__UNKNOWN_STATUS__";
     }
+
+    auto file_type_to_str(FileType type) -> std::string_view {
+        const static std::unordered_map<FileType, const char *> file_type_to_str = {
+            {FileType::FILE, "FILE"},
+            {FileType::DIRECTORY, "DIRECTORY"},
+        };
+
+        auto iter = file_type_to_str.find(type);
+
+        if (iter != file_type_to_str.end()) {
+            return iter->second;
+        }
+
+        return "__UNKNOWN_STATUS__";
+    }
 }
 
-std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::StatusCode& status) {
+auto operator<<(std::ostream& os, const FileShare::Protocol::StatusCode& status) -> std::ostream & {
     return os << status_to_str(status);
 }
 
-std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::CommandCode& command) {
+auto operator<<(std::ostream& os, const FileShare::Protocol::CommandCode& command) -> std::ostream & {
     return os << command_to_str(command);
 }
 
-std::istream& operator>>(std::istream& is, FileShare::Protocol::StatusCode& status) {
+auto operator<<(std::ostream& os, const FileShare::Protocol::FileType &type) -> std::ostream & {
+    return os << file_type_to_str(type);
+}
+
+auto operator>>(std::istream& is, FileShare::Protocol::StatusCode& status) -> std::istream & {
     std::string str;
 
     is >> str;
@@ -156,10 +193,18 @@ std::istream& operator>>(std::istream& is, FileShare::Protocol::StatusCode& stat
     return is;
 }
 
-std::istream& operator>>(std::istream& is, FileShare::Protocol::CommandCode& command) {
+auto operator>>(std::istream& is, FileShare::Protocol::CommandCode& command) -> std::istream & {
     std::string str;
 
     is >> str;
     command = FileShare::Protocol::str_to_command(str);
+    return is;
+}
+
+auto operator>>(std::istream& is, FileShare::Protocol::FileType &type) -> std::istream & {
+    std::string str;
+
+    is >> str;
+    type = FileShare::Protocol::str_to_file_type(str);
     return is;
 }

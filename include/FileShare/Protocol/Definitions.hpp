@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Thu Dec  7 11:06:44 2023 Francois Michaut
+** Last update Fri Aug 22 22:53:48 2025 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
@@ -22,8 +22,12 @@ namespace FileShare::Protocol {
     // TODO: rename MessageCode or similar (it is both Requests and Responses)
 
     // 1 byte - 0-0xFF
-    enum class CommandCode {
+    enum class CommandCode : std::uint8_t {
         RESPONSE            = 0x00,
+
+        // TODO: Get theses out of the command_codes ?
+        SUPPORTED_VERSIONS  = 0x01,
+        SELECTED_VERSION    = 0x02,
 
         SEND_FILE           = 0x10,
         RECEIVE_FILE        = 0x11,
@@ -49,6 +53,7 @@ namespace FileShare::Protocol {
                                     // TODO: figure out next step on approval/reject ?
 
         BAD_REQUEST         = 0x40,
+        UNAUTHORIZED        = 0x41,
         INVALID_REQUEST_ID  = 0x42,
         FORBIDDEN           = 0x43,
         FILE_NOT_FOUND      = 0x44,
@@ -58,16 +63,18 @@ namespace FileShare::Protocol {
         INTERNAL_ERROR      = 0x50,
     };
 
-    CommandCode str_to_command(std::string str);
-    StatusCode str_to_status(std::string str);
-
-    std::string command_to_str(CommandCode code);
-    std::string status_to_str(StatusCode code);
-
     enum class FileType {
         FILE       = 0x00,
         DIRECTORY  = 0x01,
     };
+
+    auto str_to_command(std::string_view str) -> CommandCode;
+    auto str_to_status(std::string_view str) -> StatusCode;
+    auto str_to_file_type(std::string_view str) -> FileType;
+
+    auto command_to_str(CommandCode command) -> std::string_view;
+    auto status_to_str(StatusCode status) -> std::string_view;
+    auto file_type_to_str(FileType type) -> std::string_view;
 
     using MessageID = std::uint8_t;
 
@@ -104,7 +111,9 @@ namespace FileShare::Protocol {
     };
 }
 
-std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::StatusCode& status);
-std::ostream& operator<<(std::ostream& os, const FileShare::Protocol::CommandCode& command);
-std::istream& operator>>(std::istream& is, FileShare::Protocol::StatusCode& status);
-std::istream& operator>>(std::istream& is, FileShare::Protocol::CommandCode& command);
+auto operator<<(std::ostream& os, const FileShare::Protocol::StatusCode &status) -> std::ostream &;
+auto operator<<(std::ostream& os, const FileShare::Protocol::CommandCode &command) -> std::ostream &;
+auto operator<<(std::ostream& os, const FileShare::Protocol::FileType &type) -> std::ostream &;
+auto operator>>(std::istream& is, FileShare::Protocol::StatusCode &status) -> std::istream &;
+auto operator>>(std::istream& is, FileShare::Protocol::CommandCode &command) -> std::istream &;
+auto operator>>(std::istream& is, FileShare::Protocol::FileType &type) -> std::istream &;

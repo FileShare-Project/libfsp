@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Mon Feb 14 19:35:41 2022 Francois Michaut
-## Last update Sat Dec  2 17:44:08 2023 Francois Michaut
+## Last update Sun Aug 24 01:20:19 2025 Francois Michaut
 ##
 ## CMakeLists.txt : CMake building and running tests for FileShare
 ##
@@ -28,8 +28,13 @@ add_executable(unit_tests
 target_compile_definitions(unit_tests PRIVATE DEBUG)
 target_link_libraries(unit_tests fsp)
 
+target_compile_options(unit_tests PRIVATE
+  $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-UNDEBUG>
+  $<$<CXX_COMPILER_ID:MSVC>:/UNDEBUG>
+)
+
 foreach (test ${TestFiles})
-  if (NOT ${test} STREQUAL test_driver.cpp)
+  if (NOT ${test} MATCHES "test_driver.cpp$")
     get_filename_component (DName ${test} DIRECTORY)
     get_filename_component (TName ${test} NAME_WE)
     if (DName STREQUAL "")
