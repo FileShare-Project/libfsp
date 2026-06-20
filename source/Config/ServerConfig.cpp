@@ -4,13 +4,15 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Aug  6 15:19:24 2025 Francois Michaut
-** Last update Sun Aug 24 19:48:12 2025 Francois Michaut
+** Last update Sat Jun 20 09:42:39 2026 Francois Michaut
 **
 ** ServerConfig.cpp : Server Configuration Implementation
 */
 
+#include "CppSockets/IPv4.hpp"
 #include "FileShare/Config/Serialization.hpp" // NOLINT(misc-include-cleaner,unused-includes)
 #include "FileShare/Config/ServerConfig.hpp"
+#include "FileShare/Errors/ConfigErrors.hpp"
 #include "FileShare/Utils/Path.hpp"
 
 #include <CppSockets/OSDetection.hpp>
@@ -20,12 +22,17 @@
 #include <fstream>
 #include <stdexcept>
 
+// Need to be registered after we include the archives it will be used with
+CEREAL_REGISTER_TYPE(CppSockets::EndpointV4);
+
 const char * const DEFAULT_PATH = "~/.fsp/server_config";
 
 namespace FileShare {
     ServerConfig::ServerConfig() :
         m_filepath(FileShare::Utils::resolve_home_component(DEFAULT_PATH)),
-        m_uuid("0000-0000-0000-0000") // TODO: Generate Random UUID
+        m_uuid("0000-0000-0000-0000"), // TODO: Generate Random UUID
+        m_device_name("Unnamed Device") // TODO: Prevent this from happening. Either generate a random name or ask the user to input one on first launch
+                                        // Currently only happens if default_config arg is used
     {}
 
     ServerConfig::ServerConfig(std::string uuid) : m_uuid(std::move(uuid)) {}
@@ -34,6 +41,11 @@ namespace FileShare {
         static const std::filesystem::path private_keys_dir = FileShare::Utils::resolve_home_component("~/.fsp/private").generic_string();
 
         return private_keys_dir;
+    }
+
+    auto ServerConfig::default_endpoint() -> std::shared_ptr<CppSockets::IEndpoint> {
+        // TODO: choose a better port than 12345
+        return std::make_shared<CppSockets::EndpointV4>(CppSockets::IPv4("0.0.0.0"), 12345);
     }
 
     auto ServerConfig::set_private_keys_dir(std::string_view path) -> ServerConfig & {
@@ -57,11 +69,14 @@ namespace FileShare {
         // Avoid the default constructor which would wastefuly generate an UUID
         ServerConfig config("0000-0000-0000-0000");
         config.m_filepath = FileShare::Utils::resolve_home_component(config_file);
-        std::ifstream file(config.m_filepath, std::ios_base::binary | std::ios_base::in);
+        std::ifstream file(config.m_filepath,
+                           std::ios_base::binary | std::ios_base::in);
         cereal::BinaryInputArchive archive(file);
 
-        // TODO: Will crash if file doesn't exist. Do we want to create it ?
-        // It could also be an error if the config is missing -> TBD
+        if (!file.is_open()) {
+            throw FileShare::Errors::Config::NotFoundError(config_file.string());
+        }
+
         archive(config);
         // TODO: Need to validate config - if someone messes up the file, we could have problems
         // (Or if private_keys_dir contains ~, it needs to be expanded)

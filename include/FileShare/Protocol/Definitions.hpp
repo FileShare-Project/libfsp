@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:28:47 2022 Francois Michaut
-** Last update Fri Aug 22 22:53:48 2025 Francois Michaut
+** Last update Sat Jun 20 10:37:53 2026 Francois Michaut
 **
 ** Definitions.hpp : General definitions and classes
 */
@@ -51,6 +51,7 @@ namespace FileShare::Protocol {
 
         APPROVAL_PENDING    = 0x33, // SEND_FILE / RECEIVE_FILE needing user confirmation
                                     // TODO: figure out next step on approval/reject ?
+                                    // TODO: Need a status code for rejection
 
         BAD_REQUEST         = 0x40,
         UNAUTHORIZED        = 0x41,

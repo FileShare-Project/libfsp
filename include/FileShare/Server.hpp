@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 19:01:51 2022 Francois Michaut
-** Last update Fri Aug 22 00:39:26 2025 Francois Michaut
+** Last update Fri Jun 12 01:04:34 2026 Francois Michaut
 **
 ** Server.hpp : Server part used to receive qnd process requests of Peers
 */
@@ -35,7 +35,7 @@ namespace FileShare {
         public:
             class Event {
                 public:
-                    enum Type {
+                    enum Type : std::uint8_t {
                         NONE,
                         CONNECT,
                         REQUEST
@@ -53,6 +53,10 @@ namespace FileShare {
                     auto type() -> Type & { return m_type; }
                     auto peer() -> PeerBase_ptr & { return m_peer; }
                     auto request() -> std::optional<Protocol::Request> & { return m_request; }
+
+                    [[nodiscard]] auto is_request() const -> bool { return m_type == REQUEST; }
+                    [[nodiscard]] auto is_connect() const -> bool { return m_type == CONNECT; }
+                    [[nodiscard]] auto is_none() const -> bool { return m_type == NONE; }
                 private:
                     Type m_type = NONE;
                     PeerBase_ptr m_peer;
@@ -71,7 +75,7 @@ namespace FileShare {
             using FdVector = std::vector<struct pollfd>;
 
             Server(
-                std::shared_ptr<CppSockets::IEndpoint> server_endpoint = Server::default_endpoint(),
+                std::shared_ptr<CppSockets::IEndpoint> server_endpoint = ServerConfig::default_endpoint(),
                 ServerConfig config = Server::default_config(),
                 Config peer_config = Server::default_peer_config()
             );
@@ -100,30 +104,30 @@ namespace FileShare {
 
             void accept_peer(PreAuthPeer_ptr peer, bool temporary_trust = false);
 
-            auto get_config() -> ServerConfig & { return m_config; }
-            auto get_config() const -> const ServerConfig & { return m_config; }
+            [[nodiscard]] auto get_config() -> ServerConfig & { return m_config; }
+            [[nodiscard]] auto get_config() const -> const ServerConfig & { return m_config; }
             void set_config(const ServerConfig &config) { m_config = config; }
 
             // Warning : changing the default peer configuration does NOT
             // change the already connected Peers, only new ones. You need to
             // manually update the configuration of each existing peer.
-            auto get_peer_config() -> Config & { return m_peer_config; }
-            auto get_peer_config() const -> const Config & { return m_peer_config; }
+            [[nodiscard]] auto get_peer_config() -> Config & { return m_peer_config; }
+            [[nodiscard]] auto get_peer_config() const -> const Config & { return m_peer_config; }
             void set_peer_config(const Config &config) { m_peer_config = config; }
 
             static auto default_config() -> ServerConfig;
             static auto default_peer_config() -> Config;
 
-            auto get_server_endpoint() const -> const CppSockets::IEndpoint & { return *m_server_endpoint; }
-            auto get_socket() const -> const CppSockets::TlsSocket & { return m_socket; }
+            [[nodiscard]] auto get_server_endpoint() const -> const CppSockets::IEndpoint & { return *m_server_endpoint; }
+            [[nodiscard]] auto get_socket() const -> const CppSockets::TlsSocket & { return m_socket; }
 
-            auto get_peers() const -> const PeerMap & { return m_peers; }
-            auto get_pending_peers() const -> const PreAuthPeerMap & { return m_pending_authorization_peers; }
+            [[nodiscard]] auto get_peers() const -> const PeerMap & { return m_peers; }
+            [[nodiscard]] auto get_pending_peers() const -> const PreAuthPeerMap & { return m_pending_authorization_peers; }
 
-            auto get_poll_fds() const -> const FdVector & { return m_fds; }
+            [[nodiscard]] auto get_poll_fds() const -> const FdVector & { return m_fds; }
 
             void restart();
-            auto disabled() const -> bool { return m_config.is_server_disabled(); }
+            [[nodiscard]] auto disabled() const -> bool { return m_config.is_server_disabled(); }
             void set_disabled(bool disabled);
         private:
             void initialize_private_key();
@@ -134,8 +138,6 @@ namespace FileShare {
             auto delete_pre_auth_peer(FdVector::iterator iter, PreAuthPeerMap &map) -> FdVector::iterator;
             auto insert_peer(PreAuthPeer_ptr &&peer) -> Peer_ptr &;
             auto insert_peer(Peer_ptr peer) -> Peer_ptr &;
-
-            static auto default_endpoint() -> std::shared_ptr<CppSockets::IEndpoint>;
 
             std::shared_ptr<CppSockets::IEndpoint> m_server_endpoint;
             CppSockets::TlsContext m_ctx;

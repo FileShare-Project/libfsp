@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:23:57 2022 Francois Michaut
-** Last update Fri Aug 22 18:59:52 2025 Francois Michaut
+** Last update Thu May 14 05:03:33 2026 Francois Michaut
 **
 ** Config.hpp : Configuration of the file sharing
 */
@@ -35,7 +35,7 @@ namespace FileShare {
             auto set_downloads_folder(const std::filesystem::path &path) -> Config &;
 
             auto set_file_mapping(FileMapping mapping) -> Config & { m_filemap = std::move(mapping); return *this; }
-            auto get_file_mapping() const -> const FileMapping & { return m_filemap; }
+            [[nodiscard]] auto get_file_mapping() const -> const FileMapping & { return m_filemap; }
             auto get_file_mapping() -> FileMapping & { return m_filemap; }
 
             [[nodiscard]] auto get_transport_mode() const -> TransportMode { return m_transport_mode; }

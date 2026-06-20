@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Aug 29 20:50:53 2022 Francois Michaut
-** Last update Sat Aug 23 12:59:50 2025 Francois Michaut
+** Last update Wed May 27 12:40:37 2026 Francois Michaut
 **
 ** Peer.cpp : Implementation of the FileShareProtocol Client
 */
@@ -64,14 +64,14 @@ namespace FileShare {
                 return;
             }
             case Protocol::CommandCode::SEND_FILE: {
-                std::shared_ptr<Protocol::SendFileData> data = std::dynamic_pointer_cast<Protocol::SendFileData>(request.request);
+                auto data = std::dynamic_pointer_cast<Protocol::SendFileData>(request.request);
 
                 create_download(request.message_id, data);
                 return; // create_download already sends reply to request
 
             }
             case Protocol::CommandCode::RECEIVE_FILE: {
-                std::shared_ptr<Protocol::ReceiveFileData> data = std::dynamic_pointer_cast<Protocol::ReceiveFileData>(request.request);
+                auto data = std::dynamic_pointer_cast<Protocol::ReceiveFileData>(request.request);
                 auto virtual_path = data->filepath;
                 auto host_path = m_config.get_file_mapping().virtual_to_host(virtual_path);
                 auto [handler, status] = prepare_upload(host_path.string(), virtual_path, data->packet_size, data->packet_start);

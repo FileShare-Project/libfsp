@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug 28 09:23:07 2022 Francois Michaut
-** Last update Sat Aug 23 00:08:01 2025 Francois Michaut
+** Last update Wed May 27 09:12:59 2026 Francois Michaut
 **
 ** Peer.hpp : Client to communicate with peers using the FileShareProtocol
 */
@@ -34,8 +34,9 @@ namespace FileShare {
 
             // TODO: Allow copy ? What would that even mean ?
             Peer(const Peer &) = delete;
-            Peer(Peer &&) = default;
             auto operator=(const Peer &) -> Peer & = delete;
+
+            Peer(Peer &&) = default;
             auto operator=(Peer &&) -> Peer & = default;
 
             ~Peer() override = default;
