@@ -4,18 +4,18 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue Sep 13 11:29:35 2022 Francois Michaut
-** Last update Sun Aug 24 19:46:07 2025 Francois Michaut
+** Last update Fri Jun 12 03:00:33 2026 Francois Michaut
 **
 ** FileShareConfig.cpp : FileShareConfig implementation
 */
 
 #include "FileShare/Config/Config.hpp"
 #include "FileShare/Config/Serialization.hpp" // NOLINT(misc-include-cleaner,unused-includes)
+#include "FileShare/Errors/ConfigErrors.hpp"
 #include "FileShare/Utils/Path.hpp"
 
 #include <cereal/archives/binary.hpp>
 
-#include <cstdio>
 #include <filesystem>
 #include <fstream>
 
@@ -42,8 +42,15 @@ namespace FileShare {
 
         Config config(false);
         config.m_filepath = FileShare::Utils::resolve_home_component(config_file);
-        std::ifstream file(config.m_filepath, std::ios_base::binary | std::ios_base::in);
+
+        std::ifstream file(config.m_filepath,
+                           std::ios_base::binary | std::ios_base::in);
+
         cereal::BinaryInputArchive archive(file);
+
+        if (!file.is_open()) {
+            throw FileShare::Errors::Config::NotFoundError(config_file.string());
+        }
 
         archive(config);
         // TODO: Need to validate config - if someone messes up the file, we could have problems

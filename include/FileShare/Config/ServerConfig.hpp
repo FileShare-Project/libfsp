@@ -4,12 +4,15 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Aug  6 15:09:50 2025 Francois Michaut
-** Last update Fri Aug 22 20:41:53 2025 Francois Michaut
+** Last update Fri Jun 12 04:06:14 2026 Francois Michaut
 **
 ** ServerConfig.hpp : Server Configuration
 */
 
 #pragma once
+
+#include "CppSockets/Address.hpp"
+#include <CppSockets/IPv4.hpp>
 
 #include <filesystem>
 
@@ -22,6 +25,7 @@ namespace FileShare {
             static constexpr std::filesystem::perms SECURE_FOLDER_PERMS = std::filesystem::perms::owner_all;
 
             static auto default_private_keys_dir() -> const std::filesystem::path &;
+            static auto default_endpoint() -> std::shared_ptr<CppSockets::IEndpoint>;
 
             // paths starting with '~/' will have this part replaced by the current user's home directory
             static auto load(std::filesystem::path config_file = "") -> ServerConfig;
@@ -38,6 +42,10 @@ namespace FileShare {
 
             [[nodiscard]] auto is_server_disabled() const -> bool { return m_disable_server; }
             auto set_server_disabled(bool disabled) -> ServerConfig & { m_disable_server = disabled; return *this; }
+
+            [[nodiscard]] auto get_server_endpoint() const -> const CppSockets::IEndpoint & { return *m_server_endpoint; }
+            auto set_server_endpoint(std::shared_ptr<CppSockets::IEndpoint> endpoint) -> ServerConfig & { m_server_endpoint = std::move(endpoint); return *this; }
+            auto set_server_endpoint(std::string_view endpoint) -> ServerConfig & { m_server_endpoint = CppSockets::IEndpoint::from_string(endpoint) ; return *this; }
 
             void validate_config() const;
         private:
@@ -67,7 +75,10 @@ namespace FileShare {
             // Set this to true if you want an extra layer of security by
             // preventing external connections.
             // Note that when you initiate a connection to another server it will
-            // be able to send commands as well.
+            // still be able to send commands to you as well.
             bool m_disable_server = false;
+
+            // When server is enabled, this is the endpoint it listens to.
+            std::shared_ptr<CppSockets::IEndpoint> m_server_endpoint = ServerConfig::default_endpoint();
     };
 }

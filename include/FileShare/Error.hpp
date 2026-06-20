@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Oct 22 13:22:53 2023 Francois Michaut
-** Last update Sun Oct 22 13:27:05 2023 Francois Michaut
+** Last update Sat May 16 11:22:42 2026 Francois Michaut
 **
 ** Error.hpp : Generic Error class
 */

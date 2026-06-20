@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Sun Aug 24 20:16:50 2025 Francois Michaut
+** Last update Fri Jun 12 00:50:52 2026 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -116,7 +116,7 @@ namespace FileShare {
     static constexpr int VERIFY_MODE = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE;
 
     Server::Server(ServerConfig config, Config peer_config) :
-        Server(Server::default_endpoint(), std::move(config), std::move(peer_config))
+        Server(ServerConfig::default_endpoint(), std::move(config), std::move(peer_config))
     {}
 
     Server::Server(std::shared_ptr<CppSockets::IEndpoint> server_endpoint, ServerConfig config, Config peer_config) :
@@ -224,11 +224,6 @@ namespace FileShare {
 
     auto Server::default_peer_config() -> Config {
         return {}; // TODO: explicitely set default params
-    }
-
-    auto Server::default_endpoint() -> std::shared_ptr<CppSockets::IEndpoint> {
-        // TODO: choose a better port than 12345
-        return std::make_shared<CppSockets::EndpointV4>(CppSockets::IPv4("0.0.0.0"), 12345);
     }
 
     void Server::accept_peer(PreAuthPeer_ptr peer, bool temporary_trust) {
