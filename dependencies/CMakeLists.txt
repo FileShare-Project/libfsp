@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Sun Dec 10 10:27:39 2023 Francois Michaut
-## Last update Sat Jun 20 10:47:41 2026 Francois Michaut
+## Last update Tue Aug 11 01:29:15 2026 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to fetch and build the dependecies of the FileShareProtocol library
 ##
@@ -14,7 +14,7 @@ include(FetchContent)
 FetchContent_Declare(
   cppsockets
   GIT_REPOSITORY  https://github.com/FileShare-Project/libcppsockets.git
-  GIT_TAG         99cb1d1ff00345ed040b11ef645a3977a30512db
+  GIT_TAG         d15697a655e65d6ad6dbaabebdfe9d479a871bb5
 )
 FetchContent_MakeAvailable(cppsockets)
 

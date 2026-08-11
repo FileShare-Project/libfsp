@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Nov  6 21:06:10 2022 Francois Michaut
-** Last update Fri Jun 12 00:50:52 2026 Francois Michaut
+** Last update Wed Jul  1 19:18:22 2026 Francois Michaut
 **
 ** Server.cpp : Server implementation
 */
@@ -55,24 +55,24 @@ namespace {
             // TODO: Need to check before / after date ?
             // TODO: Find a way to check revoked certificates -> https://en.wikipedia.org/wiki/Certificate_revocation_list
 
-            X509_NAME *subject = X509_get_subject_name(err_cert);
+            const X509_NAME *subject = X509_get_subject_name(err_cert);
             int org_name_index = X509_NAME_get_index_by_NID(subject, NID_organizationName, -1);
             int org_unit_name_index = X509_NAME_get_index_by_NID(subject, NID_organizationalUnitName, -1);
             // int user_id_index = X509_NAME_get_index_by_NID(subject, NID_userId, -1);
             int common_name_index = X509_NAME_get_index_by_NID(subject, NID_commonName, -1);
             int dn_qualifier_index = X509_NAME_get_index_by_NID(subject, NID_dnQualifier, -1);
 
-            X509_NAME_ENTRY *org_name = X509_NAME_get_entry(subject, org_name_index);
-            X509_NAME_ENTRY *org_unit_name = X509_NAME_get_entry(subject, org_unit_name_index);
+            const X509_NAME_ENTRY *org_name = X509_NAME_get_entry(subject, org_name_index);
+            const X509_NAME_ENTRY *org_unit_name = X509_NAME_get_entry(subject, org_unit_name_index);
             // X509_NAME_ENTRY *user_id = X509_NAME_get_entry(subject, user_id_index);
-            X509_NAME_ENTRY *common_name = X509_NAME_get_entry(subject, common_name_index);
-            X509_NAME_ENTRY *dn_qualifier = X509_NAME_get_entry(subject, dn_qualifier_index);
+            const X509_NAME_ENTRY *common_name = X509_NAME_get_entry(subject, common_name_index);
+            const X509_NAME_ENTRY *dn_qualifier = X509_NAME_get_entry(subject, dn_qualifier_index);
 
             bool cert_valid = org_name && org_unit_name && /* user_id && */common_name && dn_qualifier;
 
             if (cert_valid) {
-                ASN1_STRING *org_name_str = X509_NAME_ENTRY_get_data(org_name);
-                ASN1_STRING *org_unit_name_str = X509_NAME_ENTRY_get_data(org_unit_name);
+                const ASN1_STRING *org_name_str = X509_NAME_ENTRY_get_data(org_name);
+                const ASN1_STRING *org_unit_name_str = X509_NAME_ENTRY_get_data(org_unit_name);
                 // ASN1_STRING *user_id_str = X509_NAME_ENTRY_get_data(user_id);
                 // ASN1_STRING *dn_qualifier_str = X509_NAME_ENTRY_get_data(dn_qualifier);
 

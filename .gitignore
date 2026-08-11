@@ -1,6 +1,10 @@
 build/
 
-libfsp.so
+file-share
+file-share-cli
+*.so
+*.dll
+*.exe
 compile_commands.json
 
 *.tmp

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Aug  6 15:19:24 2025 Francois Michaut
-** Last update Sat Jun 20 09:42:39 2026 Francois Michaut
+** Last update Mon Aug 10 20:37:07 2026 Francois Michaut
 **
 ** ServerConfig.cpp : Server Configuration Implementation
 */
@@ -89,6 +89,8 @@ namespace FileShare {
         } else {
             config_file = FileShare::Utils::resolve_home_component(config_file);
         }
+
+        std::filesystem::create_directories(config_file.parent_path());
 
         std::filesystem::path tmp_file = config_file.string() + ".tmp";
         std::ofstream file(tmp_file, std::ios_base::binary | std::ios_base::out | std::ios_base::trunc);
